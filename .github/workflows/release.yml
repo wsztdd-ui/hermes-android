@@ -22,7 +22,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
       - name: Install Android API 34 build packages
         run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
       - name: Checkout pinned Hermes renderer
