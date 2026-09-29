@@ -11,10 +11,10 @@ This project was built entirely with AI: AI wrote the code and documentation, wh
 
 ## Status
 
-- Source version: `1.0.0` (Android `versionCode 55`, the first public release).
+- Source version: `1.0.0` (Android `versionCode 55`).
 - The project is in preview. Compatibility with different Gateway versions, vendor WebViews, and foldable devices still needs validation in users' environments.
-- A renderer crash after repeated light/dark theme changes passed real-device retesting. The fix is maintained as a reviewable patch and applied by CI to the pinned Hermes upstream commit.
-- Voice input, production signing, system notifications, and a broad device matrix have not been accepted. The 1.0.0 Debug build passed 67/67 regression checks on a vivo Android 16 device connected to a live Gateway. The device's system-level app notification switch is off, so notification drawer display remains unverified. See [testing notes](TESTING.md) and [release instructions](docs/RELEASING.md).
+- The renderer theme-switching fix is maintained as a reviewable patch and applied by CI to the pinned Hermes upstream commit.
+- Voice input, system notifications, and a broad device matrix need further validation. See [testing notes](TESTING.md) and [release instructions](docs/RELEASING.md).
 
 ## Features
 
@@ -64,7 +64,7 @@ Download from [Releases](https://github.com/wsztdd-ui/hermes-android/releases/la
 
 | File | Notes |
 |---|---|
-| `Hermes-Android-1.0.0-debug.apk` | Debug-signed, passed 67/67 regression on a vivo Android 16 device connected to a Gateway; installs directly. |
+| `Hermes-Android-1.0.0-debug.apk` | Debug-signed preview build for your own testing. |
 
 Verify integrity with the `SHA256SUMS` file on the Release page; build and version details are in `BUILD_INFO.txt`. There is currently no signed, device-tested production Release APK.
 

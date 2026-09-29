@@ -16,10 +16,12 @@ node scripts/validate-frontend.mjs
 
 With an Android 8.0+ emulator attached, `./scripts/debug-smoke.sh` installs and launches the Debug APK, checks for a fatal Android exception, and saves a screenshot under the ignored `captures/` directory. This smoke check does not exercise an authenticated Gateway session.
 
-## 1.0.0 device result
+## Release checks
 
-The 1.0.0 Debug APK (`versionCode` 55) passed 67/67 regression checks on a vivo Android 16 device connected to a Gateway. The checks covered chat, sessions, search, files, tasks and approvals, skills and MCP, model switching, reconnect and message retry, and notification bridge payloads. Viewports of 390×844, 800×1024, and 1280×800 were checked. This result applies to that Debug APK and device; it does not establish broad device compatibility.
-
-System notification drawer delivery was not verified because the device's app notification switch was off. Voice input was not accepted. The unsigned Release variant compiled with lintVital and R8, but it was not installed or runtime-tested. A production-signed release still needs signature verification and device testing.
+Before distribution, verify the exact APK's signing certificate and checksum,
+install it on an Android 8.0+ device or emulator, and test connection,
+authentication, chat, attachments, microphone permission, and notifications
+against an authorized Gateway. Record any unverified features in the release
+notes. CI compilation alone does not establish runtime compatibility.
 
 Test with your own authorized Gateway. Keep credentials, private Gateway URLs, chat content, device identifiers, and screenshots containing personal data out of public reports and CI logs.

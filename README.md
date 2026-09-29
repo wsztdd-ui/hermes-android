@@ -11,10 +11,10 @@ Hermes Android 是一个原生 Android 客户端，以 Android WebView 承载 He
 
 ## 当前状态
 
-- 当前源码版本：`1.0.0`（Android `versionCode 55`，首个公开版本）。
+- 当前源码版本：`1.0.0`（Android `versionCode 55`）。
 - 项目处于 preview 阶段；不同 Gateway 版本、Android 厂商 WebView、折叠屏形态仍需用户环境验证。
-- 明暗主题重复切换导致的 renderer 崩溃已通过真机复测；修复以可审阅补丁维护，并由 CI 应用到固定的 Hermes 上游提交。
-- 语音输入、生产签名、系统通知及完整设备矩阵尚未验收。1.0.0 Debug 版已在 vivo Android 16 真机连接真实 Gateway 完成 67/67 项回归；该机系统级应用通知开关关闭，因此通知栏展示仍未验证。请查看 [测试说明](TESTING.md) 与 [发布说明](docs/RELEASING.md)。
+- 明暗主题切换的 renderer 修复以可审阅补丁维护，并由 CI 应用到固定的 Hermes 上游提交。
+- 语音输入、系统通知及完整设备矩阵仍需进一步验证；构建与测试方法见 [测试说明](TESTING.md) 和 [发布说明](docs/RELEASING.md)。
 
 ## 功能
 
@@ -64,7 +64,7 @@ HERMES_SRC=/tmp/hermes-agent/apps/desktop bash scripts/build-all.sh
 
 | 文件 | 说明 |
 |---|---|
-| `Hermes-Android-1.0.0-debug.apk` | Debug 签名，已在 vivo Android 16 真机连接 Gateway 完成 67/67 回归，可直接安装。 |
+| `Hermes-Android-1.0.0-debug.apk` | Debug 签名的预览构建，可用于自行测试。 |
 
 下载后可用 Release 页面的 `SHA256SUMS` 校验完整性，构建与版本信息见 `BUILD_INFO.txt`。目前没有经签名和真机验收的正式 Release APK。
 

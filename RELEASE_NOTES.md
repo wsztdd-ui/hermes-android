@@ -1,16 +1,24 @@
 # Hermes Android 1.0.0
 
-First public preview of the unofficial Android client for a user-provided Hermes Gateway. Android `versionCode` is 55.
+Preview of an unofficial Android client for a user-provided Hermes Gateway.
+Android `versionCode` is 55 and the app ID is `com.hermes.android`.
 
 ## Included
 
 - Touch-oriented chat, session management, tasks and approvals, skills and MCP controls, file browsing, search, and model selection.
 - Multiple Gateway connections with Android Keystore-backed token storage.
-- Background notification bridge and retry of messages queued during connection loss.
-- Origin-scoped OAuth cookies and per-Gateway login flow handling.
+- Background notifications and retry of messages queued during connection loss.
+- Origin-scoped Gateway sessions and per-Gateway login handling.
+- A native WebView bridge restricted to the app's trusted page.
 
 ## Verification and limits
 
-The Debug APK passed 67/67 regression checks on one vivo Android 16 device connected to a Gateway. The system notification drawer was not verified because notifications were disabled at the device level. Voice input, a broader device matrix, and a production-signed APK remain unverified. The unsigned Release build passed build checks but was not installed or runtime-tested. See [TESTING.md](TESTING.md).
+CI builds the pinned renderer, runs its theme lifecycle test, and produces
+Android Debug and unsigned Release candidates. See [TESTING.md](TESTING.md)
+for reproducible checks. Test the exact downloaded APK with your own authorized
+Gateway. Voice input, notification delivery, and compatibility across devices
+and Gateway versions may vary.
 
-Install only the Debug APK linked on the [release page](https://github.com/wsztdd-ui/hermes-android/releases/tag/v1.0.0). It uses a debug signing key and cannot upgrade an installation signed with another key.
+The release page provides the APK, SHA-256 checksum, build information, and
+third-party notices. Keep credentials, private URLs, and chat content out of
+public reports.
