@@ -172,7 +172,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun log(msg: String) {
-        if (BuildConfig.DEBUG) Log.d(TAG, msg)
+        if (!BuildConfig.DEBUG) return
+        Log.d(TAG, msg)
         synchronized(recentLogLock) {
             recentLogLines.addLast("${java.time.LocalTime.now().withNano(0)} $msg")
             while (recentLogLines.size > 250) recentLogLines.removeFirst()

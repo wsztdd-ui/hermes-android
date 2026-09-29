@@ -23,9 +23,9 @@ You choose the Gateway URL and credentials in the app.
   Gateway, depending on the renderer version and configuration.
 - **External links:** non-app links open through Android's external URL
   handler. The destination then applies its own privacy policy.
-- **Diagnostics:** Android logcat may contain app error messages, URLs, and
-  renderer diagnostics. Do not share logs publicly without checking and
-  redacting them.
+- **Diagnostics:** Debug builds write app and renderer diagnostics to Android
+  logcat; these may include URLs and error details. Release builds do not write
+  these app diagnostics. Review and redact Debug logs before sharing them.
 
 This notice describes the client code in this repository. It is not a promise
 about data handling by a Gateway, model provider, or linked service. App store

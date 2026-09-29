@@ -24,6 +24,10 @@ import java.security.MessageDigest
  */
 class NativeWebSocketBridge(private val webView: WebView, private val capability: String) {
 
+    private fun debugLog(message: String) {
+        if (BuildConfig.DEBUG) android.util.Log.d(TAG, message)
+    }
+
     private fun requireCapability(provided: String) {
         check(MessageDigest.isEqual(
             capability.toByteArray(Charsets.UTF_8),
@@ -59,11 +63,11 @@ class NativeWebSocketBridge(private val webView: WebView, private val capability
         require(url.startsWith("wss://", ignoreCase = true)) { "Only secure WebSocket URLs are supported" }
         val id = synchronized(this) { ++nextId }
         // OAuth tickets and token credentials can live in the query string.
-        android.util.Log.d(TAG, "nativeWsConnect id=$id url=${url.substringBefore('?')}")
+        debugLog("nativeWsConnect id=$id url=${url.substringBefore('?')}")
         val request = Request.Builder().url(url).build()
         val ws = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
-                android.util.Log.d(TAG, "onOpen id=$id code=${response.code}")
+                debugLog("onOpen id=$id code=${response.code}")
                 postJs("window.__hermesWs && window.__hermesWs.onOpen($id);")
             }
 
@@ -71,7 +75,7 @@ class NativeWebSocketBridge(private val webView: WebView, private val capability
                 // Avoid a logcat write for every streamed event in release builds;
                 // high-frequency agent output can otherwise add noticeable jank.
                 if (BuildConfig.DEBUG) {
-                    android.util.Log.d(TAG, "onMessage id=$id len=${text.length}")
+                    debugLog("onMessage id=$id len=${text.length}")
                 }
                 // 后台通知：帧过滤/发送在原生层完成（前台时是两次布尔检查的开销）
                 HermesNotifier.onFrame(text)
@@ -80,18 +84,18 @@ class NativeWebSocketBridge(private val webView: WebView, private val capability
             }
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                android.util.Log.d(TAG, "onClosing id=$id code=$code reason=$reason")
+                debugLog("onClosing id=$id code=$code reason=$reason")
                 webSocket.close(code, reason)
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                android.util.Log.d(TAG, "onClosed id=$id code=$code reason=$reason")
+                debugLog("onClosed id=$id code=$code reason=$reason")
                 sockets.remove(id)
                 postJs("window.__hermesWs && window.__hermesWs.onClose($id, $code, ${jsonQuote(reason)});")
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                android.util.Log.d(TAG, "onFailure id=$id err=${t.message} respCode=${response?.code}")
+                debugLog("onFailure id=$id err=${t.message} respCode=${response?.code}")
                 sockets.remove(id)
                 val msg = t.message ?: "ws error"
                 postJs("window.__hermesWs && window.__hermesWs.onError($id, ${jsonQuote(msg)});")
