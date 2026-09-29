@@ -7,6 +7,8 @@ English · [简体中文](README.md)
 
 Hermes Android is a native Android client. It hosts the Hermes Desktop renderer in Android WebView and adds a touch-friendly mobile interface. The renderer is pinned to an upstream Hermes Agent commit and adapted with patches maintained in this repository; see [`patches/`](patches/) and the [Android CI workflow](.github/workflows/android.yml).
 
+This project was built entirely with AI: AI wrote the code and documentation, while the maintainer supplied requirements and tested the app.
+
 ## Status
 
 - Source version: `1.0.0` (Android `versionCode 55`, the first public release).

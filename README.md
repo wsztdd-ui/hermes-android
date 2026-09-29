@@ -7,6 +7,8 @@
 
 Hermes Android 是一个原生 Android 客户端，以 Android WebView 承载 Hermes Desktop renderer，并提供适配触屏的独立交互层。renderer 固定在 Hermes Agent 上游提交，并由本仓库补丁适配；详见 [`patches/`](patches/) 和 [Android CI 工作流](.github/workflows/android.yml)。
 
+这个项目是纯 AI 搓的：代码和文档由 AI 编写，维护者负责提出需求并测试验收。
+
 ## 当前状态
 
 - 当前源码版本：`1.0.0`（Android `versionCode 55`，首个公开版本）。
