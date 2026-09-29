@@ -1,0 +1,46 @@
+diff --git a/apps/desktop/src/themes/context.test.tsx b/apps/desktop/src/themes/context.test.tsx
+index 144eca0f6d..50ce1b562c 100644
+--- a/apps/desktop/src/themes/context.test.tsx
++++ b/apps/desktop/src/themes/context.test.tsx
+@@ -139,0 +140,29 @@ describe('ThemeProvider highlight preview', () => {
++
++  it('switches appearance repeatedly with an async native bridge', () => {
++    const previous = Object.getOwnPropertyDescriptor(window, 'hermesDesktop')
++    const setNativeTheme = vi.fn(async () => {})
++
++    try {
++      Object.defineProperty(window, 'hermesDesktop', {
++        configurable: true,
++        value: { setNativeTheme }
++      })
++
++      renderProbe()
++      act(() => ctx.setMode('dark'))
++      expect(ctx.mode).toBe('dark')
++      expect(window.document.documentElement.dataset.hermesMode).toBe('dark')
++
++      act(() => ctx.setMode('system'))
++      expect(ctx.mode).toBe('system')
++      expect(setNativeTheme).toHaveBeenLastCalledWith('system')
++    } finally {
++      cleanup()
++
++      if (previous) {
++        Object.defineProperty(window, 'hermesDesktop', previous)
++      } else {
++        Reflect.deleteProperty(window, 'hermesDesktop')
++      }
++    }
++  })
+diff --git a/apps/desktop/src/themes/context.tsx b/apps/desktop/src/themes/context.tsx
+index d2024906a4..9fd4dc25dd 100644
+--- a/apps/desktop/src/themes/context.tsx
++++ b/apps/desktop/src/themes/context.tsx
+@@ -463 +463,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
+-  useEffect(() => syncNativeTheme(mode, renderedMode), [mode, renderedMode])
++  // Effects may return a cleanup function only. The bridge method is async, so
++  // returning it directly makes React treat its Promise as a cleanup callback;
++  // the next appearance change then crashes during passive-effect teardown.
++  useEffect(() => {
++    void syncNativeTheme(mode, renderedMode)
++  }, [mode, renderedMode])

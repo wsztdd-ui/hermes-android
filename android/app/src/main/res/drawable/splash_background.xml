@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 启动屏背景：深色 + 居中 Hermes ☤ -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/hermes_splash_bg" />
+</layer-list>

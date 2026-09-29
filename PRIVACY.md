@@ -1,0 +1,30 @@
+# Privacy and data handling
+
+Hermes Android is a client. It does not provide a Gateway or account service.
+You choose the Gateway URL and credentials in the app.
+
+- **Connection data:** the configured Gateway receives the API, WebSocket,
+  chat and attachment data required to provide Hermes features. The Gateway
+  operator controls server-side logging and retention.
+- **Credentials:** connection tokens are encrypted at rest with Android
+  Keystore-backed AES-GCM. Password/cookie authentication uses WebView cookies
+  for the configured Gateway. Removing a connection or clearing app data
+  removes the corresponding local state.
+- **Attachments:** selected files are made available to the renderer and are
+  sent only when the user submits them to a conversation. Review file contents
+  before sending.
+- **Microphone:** Android declares the audio permission for voice input. The
+  app requests access only after a WebView audio-capture permission request;
+  the user can deny it in Android settings. Voice audio and transcription may
+  be processed by the renderer's configured speech service or the connected
+  Gateway, depending on the renderer version and configuration.
+- **External links:** non-app links open through Android's external URL
+  handler. The destination then applies its own privacy policy.
+- **Diagnostics:** Android logcat may contain app error messages, URLs, and
+  renderer diagnostics. Do not share logs publicly without checking and
+  redacting them.
+
+This notice describes the client code in this repository. It is not a promise
+about data handling by a Gateway, model provider, or linked service. App store
+distribution should include a maintainer contact and a review of the exact
+release build's network behavior.

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="hermes_splash_bg">#0d1117</color>
+    <color name="hermes_splash_text">#e6edf3</color>
+    <color name="hermes_splash_subtext">#8b949e</color>
+    <color name="hermes_primary">#4a84fe</color>
+    <color name="hermes_accent">#FFD700</color>
+</resources>

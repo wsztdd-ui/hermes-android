@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <WebView
+        android:id="@+id/webview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- 调试标签：显示 WebView 错误/日志，正式版移除 -->
+    <TextView
+        android:id="@+id/debug_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:background="#CC000000"
+        android:textColor="#FF6A6A"
+        android:textSize="10sp"
+        android:padding="8dp"
+        android:visibility="gone"
+        android:fontFamily="monospace" />
+
+    <!-- 品牌启动屏：Hermes ☤ 标 + 名称，WebView 就绪后淡出 -->
+    <LinearLayout
+        android:id="@+id/splash"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="@color/hermes_splash_bg">
+
+        <ImageView
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:src="@drawable/hermes_logo"
+            android:contentDescription="@string/app_name" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/app_name"
+            android:textColor="@color/hermes_splash_text"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.1" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/app_tagline"
+            android:textColor="@color/hermes_splash_subtext"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/splash_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="28dp"
+            android:paddingHorizontal="24dp"
+            android:gravity="center"
+            android:accessibilityLiveRegion="polite"
+            android:text="正在加载移动工作台…"
+            android:textColor="@color/hermes_splash_subtext"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/splash_retry"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginTop="18dp"
+            android:minWidth="120dp"
+            android:text="重新加载"
+            android:visibility="gone" />
+    </LinearLayout>
+</FrameLayout>

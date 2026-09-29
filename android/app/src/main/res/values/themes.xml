@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App 主题（主窗口，全屏深色） -->
+    <style name="Theme.Hermes" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@color/hermes_splash_bg</item>
+        <item name="android:statusBarColor">@color/hermes_splash_bg</item>
+        <item name="android:navigationBarColor">@color/hermes_splash_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <!-- 启动屏主题（显示 splash 布局之前用） -->
+    <style name="Theme.Hermes.Splash" parent="Theme.Hermes">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+    </style>
+</resources>

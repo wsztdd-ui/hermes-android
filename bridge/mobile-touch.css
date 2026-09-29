@@ -1,0 +1,1544 @@
+/* Hermes Android — 移动端/平板/折叠屏适配
+ * 把桌面端 UI 放大到适合手机触控的尺寸：
+ *  - 按钮最小触控目标 44px（Apple HIG 建议）
+ *  - 增大图标按钮、文字、间距
+ * 使用动态视口单位，避免 Android 地址栏、分屏和折叠屏铰链造成内容裁切。
+ */
+
+/* ── 设计 token（单一来源）──────────────────────────────────────────────
+ * 几何：--hm-top/quick/nav 的值是初值，mobile-ui.js 用 ResizeObserver 把
+ * chrome 三条的真实渲染高度写回同名变量，所有布局引用变量而非魔法数。
+ * z-index：全文件只允许引用这份分层表。
+ * 颜色：跟随 renderer 主题。mobile-ui.js 在根元素写 data-hm-theme，
+ * 深浅两套变量在此切换；chrome 里不得出现写死的色值。 */
+:root {
+  --hm-hit: 44px;
+  --hm-hit-sm: 36px;
+
+  --hm-top: 56px;
+  --hm-quick: 42px;
+  --hm-nav: 64px;
+  --hm-header: calc(var(--hm-top) + var(--hm-quick));
+  --hm-title-reserve: 278px;
+
+  --z-chrome: 80;
+  --z-float: 85;
+  --z-drawer: 86;
+  --z-sheet: 90;
+  --z-modal: 100;
+  --z-toast: 110;
+  --z-native: 2147483647;
+
+  --hm-bg: #0d1017;
+  --hm-bg-raised: #10141d;
+  --hm-surface: #141c2a;
+  --hm-surface-raised: #172132;
+  --hm-surface-active: #192338;
+  --hm-border: #34445e;
+  --hm-border-soft: #252d3c;
+  --hm-text: #f2f4f8;
+  --hm-text-dim: #929daf;
+  --hm-accent: #c9dcfb;
+  --hm-accent-strong: #5487d5;
+  --hm-scrim: rgba(2, 6, 12, .68);
+}
+
+:root[data-hm-theme="light"] {
+  --hm-bg: #f4f6fb;
+  --hm-bg-raised: #ffffff;
+  --hm-surface: #e9edf5;
+  --hm-surface-raised: #ffffff;
+  --hm-surface-active: #dce7fa;
+  --hm-border: #b9c2d4;
+  --hm-border-soft: #d5dbe8;
+  --hm-text: #1a2233;
+  --hm-text-dim: #5d6a80;
+  --hm-accent: #2b5db8;
+  --hm-accent-strong: #2b5db8;
+  --hm-scrim: rgba(238, 242, 248, .72);
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 0;
+  min-height: 100%;
+  overflow: hidden;
+}
+
+/* Readable mobile entry to switch among Hermes agent profiles. The picker
+   delegates to the existing renderer control, preserving profile routing. */
+@media (max-width: 767px) {
+  #root > div > .contents > div.flex.h-screen[data-hermes-mobile-app-shell] {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+  }
+
+  [data-hermes-desktop-titlebar],
+  [data-hermes-desktop-statusbar] {
+    display: none !important;
+  }
+
+  .hermes-mobile-chrome {
+    position: fixed;
+    z-index: var(--z-chrome);
+    inset: 0;
+    pointer-events: none;
+    color: var(--hm-text);
+    font: 14px/1.4 system-ui, -apple-system, sans-serif;
+  }
+
+  .hermes-mobile-topbar,
+  .hermes-mobile-quickbar,
+  .hermes-mobile-bottom-nav {
+    position: absolute;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    pointer-events: auto;
+    background: var(--hm-bg);
+  }
+
+  .hermes-mobile-startup-notice {
+    position: fixed;
+    z-index: var(--z-toast);
+    top: calc(var(--hm-header) + 8px);
+    left: 12px;
+    right: 12px;
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 12px;
+    border: 1px solid var(--hm-border);
+    border-radius: 12px;
+    background: var(--hm-surface-raised);
+    color: var(--hm-text);
+    font: 12px/1.4 system-ui, sans-serif;
+    box-shadow: 0 6px 20px #0008;
+  }
+
+  .hermes-mobile-startup-notice button {
+    flex: 0 0 auto;
+    min-width: 76px;
+    min-height: 44px;
+    border: 1px solid var(--hm-accent-strong);
+    border-radius: 9px;
+    background: var(--hm-surface);
+    color: var(--hm-text);
+    font: inherit;
+  }
+
+  .hermes-mobile-startup-notice button[hidden] { display: none; }
+
+  .hermes-mobile-file-read-status {
+    position: fixed;
+    z-index: var(--z-toast);
+    top: calc(var(--hm-header) + 8px);
+    left: 12px;
+    right: 12px;
+    min-height: 44px;
+    padding: 12px;
+    border: 1px solid var(--hm-border);
+    border-radius: 12px;
+    background: var(--hm-surface-raised);
+    color: var(--hm-text);
+    font: 12px/1.4 system-ui, sans-serif;
+    box-shadow: 0 6px 20px #0008;
+  }
+
+  .hermes-mobile-topbar {
+    top: 0;
+    height: var(--hm-top);
+    gap: 9px;
+    padding: 0 10px;
+    border-bottom: 1px solid var(--hm-border-soft);
+    pointer-events: none;
+    background: var(--hm-bg);
+  }
+
+  .hermes-mobile-topbar > * {
+    pointer-events: auto;
+  }
+
+  .hermes-mobile-icon {
+    display: grid;
+    flex: 0 0 40px;
+    width: 40px;
+    height: 44px;
+    place-items: center;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--hm-text);
+    font-size: 21px;
+  }
+
+  .hermes-mobile-title {
+    display: grid;
+    flex: 1 1 auto;
+    max-width: calc(100vw - var(--hm-title-reserve));
+    min-width: 0;
+    line-height: 1.2;
+  }
+
+  .hermes-mobile-title strong {
+    overflow: hidden;
+    font-size: 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .hermes-mobile-title small {
+    overflow: hidden;
+    color: var(--hm-text-dim);
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .hermes-mobile-model-trigger {
+    max-width: 104px;
+    min-width: 74px;
+    height: 40px;
+    overflow: hidden;
+    padding: 0 9px;
+    border: 1px solid var(--hm-border);
+    border-radius: 999px;
+    background: var(--hm-surface);
+    color: var(--hm-accent);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .hermes-mobile-topbar > button[aria-label="新会话"],
+  .hermes-mobile-topbar > button[aria-label="New chat"] {
+    margin-left: auto;
+  }
+
+  /* Keep the renderer's real model selector in the thumb friendly top bar.
+     It must stay the original element because its popup relies on trusted
+     pointer events and cannot be opened through HTMLElement.click(). */
+  button[data-slot="tooltip-trigger"][aria-label^="模型 ·"],
+  button[data-slot="tooltip-trigger"][aria-label^="Model ·"] {
+    position: fixed !important;
+    top: 6px !important;
+    right: 58px !important;
+    z-index: var(--z-float) !important;
+    box-sizing: border-box !important;
+    width: min(148px, 37vw) !important;
+    min-width: 0 !important;
+    height: 44px !important;
+    padding: 0 10px !important;
+    overflow: hidden !important;
+    border: 1px solid var(--hm-border) !important;
+    border-radius: 999px !important;
+    background: var(--hm-surface) !important;
+    color: var(--hm-accent) !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  button[data-slot="tooltip-trigger"][aria-label^="模型 ·"]::before,
+  button[data-slot="tooltip-trigger"][aria-label^="Model ·"]::before {
+    content: attr(aria-label);
+    display: block;
+    overflow: hidden;
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  button[data-slot="tooltip-trigger"][aria-label^="模型 ·"] svg,
+  button[data-slot="tooltip-trigger"][aria-label^="Model ·"] svg {
+    display: none !important;
+  }
+
+  /* Visual proxy for the real model selector above. The renderer's chat
+   * surface uses `isolation: isolate`, which traps the fixed-positioned
+   * button (z 85) inside that stacking context — the opaque mobile topbar
+   * (z 80 at root level) paints over it and the button becomes invisible
+   * even though it stays hit-testable (the chrome is pointer-events:none).
+   * This overlay lives INSIDE the chrome container, so it is the only
+   * reliably painted layer; taps fall through to the real button beneath. */
+  .hermes-mobile-model-display {
+    position: fixed;
+    top: 6px;
+    right: 58px;
+    z-index: var(--z-sheet);
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    width: min(148px, 37vw);
+    height: 44px;
+    padding: 0 10px;
+    overflow: hidden;
+    border: 1px solid var(--hm-border);
+    border-radius: 999px;
+    background: var(--hm-surface);
+    color: var(--hm-accent);
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .hermes-mobile-model-display[hidden] { display: none; }
+
+  .hermes-mobile-quickbar {
+    top: var(--hm-top);
+    height: var(--hm-quick);
+    gap: 8px;
+    padding: 0 14px;
+    border-bottom: 1px solid var(--hm-border-soft);
+    background: var(--hm-bg);
+  }
+
+  .hermes-mobile-agent-slot {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+  }
+
+  .hermes-mobile-agent-trigger {
+    position: static !important;
+    z-index: auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: 180px !important;
+    min-height: 34px !important;
+    height: 34px !important;
+    padding: 0 12px !important;
+    border: 1px solid var(--hm-border) !important;
+    border-radius: 999px !important;
+    background: var(--hm-surface) !important;
+    color: var(--hm-accent) !important;
+    font-size: 12px !important;
+    box-shadow: none !important;
+  }
+
+  .hermes-mobile-bottom-nav {
+    top: auto;
+    bottom: 0;
+    height: var(--hm-nav);
+    justify-content: space-around;
+    gap: 3px;
+    padding: 5px 8px max(6px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--hm-border-soft);
+    background: var(--hm-bg-raised);
+  }
+
+  .hermes-mobile-nav-item {
+    display: flex;
+    flex: 1 1 0;
+    height: 48px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    border: 0;
+    border-radius: 13px;
+    background: transparent;
+    color: var(--hm-text-dim);
+  }
+
+  .hermes-mobile-nav-item span { font-size: 18px; line-height: 1.1; }
+  .hermes-mobile-nav-item small { font-size: 10px; }
+  .hermes-mobile-nav-item.active { background: var(--hm-surface-active); color: var(--hm-accent); }
+
+  .hermes-mobile-settings-link {
+    flex: 0 0 42px;
+    height: 44px;
+    margin-left: auto;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--hm-text-dim);
+    font-size: 20px;
+  }
+
+  [data-hermes-mobile-chat-surface] {
+    position: absolute !important;
+    inset: var(--hm-header) 0 var(--hm-nav) !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  [data-hermes-mobile-session-drawer] {
+    position: fixed !important;
+    z-index: var(--z-drawer) !important;
+    /* The mobile header has a 56px title row plus a 42px Agent quickbar.
+     * Start below both rows so the drawer cannot cover/clip the picker. */
+    inset: var(--hm-header) 0 var(--hm-nav) !important;
+    width: 100vw !important;
+    overflow: hidden !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .42) !important;
+  }
+
+  [data-hermes-mobile-session-drawer] > [data-slot="sidebar"] {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: 100% !important;
+    border: 0 !important;
+  }
+
+  /* The mobile topbar already owns the title and profile controls; the
+   * renderer's desktop pane tabs are redundant and consume useful list height. */
+  [data-hermes-mobile-session-drawer] [class*="group/pane-header"] {
+    display: none !important;
+  }
+
+  /* The mobile header already has an Agent profile picker. The desktop
+   * profile/gateway rail at the bottom of the session drawer becomes a row
+   * of cramped icons directly above the mobile tab bar, so hide that duplicate
+   * rail while the drawer is open and let the session list use the space. */
+  [data-hermes-mobile-session-drawer] [data-slot="profile-rail"] {
+    display: none !important;
+  }
+
+  /* Keep session search results reachable while the Android IME is open.
+   * The five desktop destination links are duplicated by the mobile hubs and
+   * otherwise consume nearly all of the drawer's keyboard-height viewport. */
+  :root[data-hermes-mobile-keyboard="true"] [data-hermes-mobile-session-drawer]
+    [data-slot="sidebar-content"] > [data-slot="sidebar-group"] {
+    display: none !important;
+  }
+
+  .hermes-mobile-hub {
+    position: fixed !important;
+    z-index: var(--z-drawer) !important;
+    inset: var(--hm-header) 0 var(--hm-nav) !important;
+    overflow: auto !important;
+    padding: 12px 16px 24px !important;
+    background: var(--hm-bg) !important;
+    color: var(--hm-text) !important;
+    font: 14px/1.45 system-ui, -apple-system, sans-serif !important;
+  }
+
+  .hermes-mobile-hub-header {
+    display: flex !important;
+    min-height: 48px !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .hermes-mobile-hub-header h2 {
+    margin: 0 !important;
+    color: var(--hm-text) !important;
+    font-size: 20px !important;
+    font-weight: 700 !important;
+  }
+
+  .hermes-mobile-hub-list {
+    display: grid !important;
+    gap: 8px !important;
+  }
+
+  .hermes-mobile-hub-row {
+    display: flex !important;
+    width: 100% !important;
+    min-height: 64px !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 10px 12px !important;
+    border: 1px solid var(--hm-border-soft) !important;
+    border-radius: 15px !important;
+    background: var(--hm-surface-raised) !important;
+    color: var(--hm-text) !important;
+    text-align: left !important;
+  }
+
+  .hermes-mobile-hub-icon {
+    display: grid !important;
+    flex: 0 0 40px !important;
+    width: 40px !important;
+    height: 40px !important;
+    place-items: center !important;
+    border-radius: 12px !important;
+    background: var(--hm-surface) !important;
+    color: var(--hm-accent) !important;
+    font-size: 18px !important;
+  }
+
+  .hermes-mobile-hub-copy {
+    display: grid !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    gap: 2px !important;
+  }
+
+  .hermes-mobile-hub-copy strong {
+    color: var(--hm-text) !important;
+    font-size: 14px !important;
+  }
+
+  .hermes-mobile-hub-copy small {
+    color: var(--hm-text-dim) !important;
+    font-size: 11px !important;
+  }
+
+  .hermes-mobile-hub-chevron {
+    color: var(--hm-text-dim) !important;
+    font-size: 22px !important;
+  }
+
+  [data-slot="composer-dock"] {
+    bottom: 0 !important;
+    padding-bottom: 8px !important;
+  }
+
+  .fixed.inset-0.z-50[class*="backdrop-blur"] {
+    z-index: var(--z-modal) !important;
+  }
+
+  [data-hermes-mobile-settings-active] {
+    z-index: var(--z-toast) !important;
+  }
+
+  .hermes-mobile-agent-trigger {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .hermes-mobile-agent-overlay {
+    position: fixed !important;
+    z-index: var(--z-sheet) !important;
+    inset: 0 !important;
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    padding: 12px 10px max(12px, env(safe-area-inset-bottom)) !important;
+    background: var(--hm-scrim) !important;
+    backdrop-filter: blur(5px);
+  }
+
+  .hermes-mobile-agent-sheet {
+    width: min(100%, 560px) !important;
+    max-height: calc(var(--hermes-mobile-viewport-height, 100dvh) - 24px) !important;
+    overflow: auto !important;
+    padding: 18px 16px max(20px, env(safe-area-inset-bottom)) !important;
+    border: 1px solid rgba(148, 163, 184, .22) !important;
+    border-radius: 22px !important;
+    background: var(--hm-surface-raised) !important;
+    color: var(--hm-text) !important;
+    box-shadow: 0 -16px 54px rgba(0, 0, 0, .4) !important;
+  }
+
+  .hermes-mobile-agent-header {
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    margin-bottom: 14px !important;
+  }
+
+  .hermes-mobile-agent-header h2 {
+    margin: 0 !important;
+    color: var(--hm-text) !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+  }
+
+  .hermes-mobile-agent-header p {
+    margin: 5px 0 0 !important;
+    color: var(--hm-text-dim) !important;
+    font-size: 12px !important;
+    line-height: 1.5 !important;
+  }
+
+  .hermes-mobile-agent-close {
+    display: grid !important;
+    flex: 0 0 44px !important;
+    width: 44px !important;
+    height: 44px !important;
+    place-items: center !important;
+    border: 0 !important;
+    border-radius: 50% !important;
+    background: var(--hm-surface) !important;
+    color: var(--hm-text) !important;
+    font-size: 24px !important;
+  }
+
+  .hermes-mobile-agent-list {
+    display: grid !important;
+    gap: 8px !important;
+  }
+
+  .hermes-mobile-agent-option {
+    display: flex !important;
+    width: 100% !important;
+    min-height: 60px !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 14px !important;
+    padding: 9px 13px !important;
+    border: 1px solid var(--hm-border-soft) !important;
+    border-radius: 15px !important;
+    background: var(--hm-surface) !important;
+    color: var(--hm-text) !important;
+    text-align: left !important;
+  }
+
+  .hermes-mobile-agent-option[aria-pressed="true"] {
+    border-color: var(--hm-accent-strong) !important;
+    background: var(--hm-surface-active) !important;
+  }
+
+  .hermes-mobile-agent-copy {
+    display: grid !important;
+    min-width: 0 !important;
+    gap: 3px !important;
+  }
+
+  .hermes-mobile-agent-copy strong {
+    overflow: hidden !important;
+    color: var(--hm-text) !important;
+    font-size: 14px !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .hermes-mobile-agent-copy small {
+    overflow: hidden !important;
+    color: var(--hm-text-dim) !important;
+    font-size: 11px !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .hermes-mobile-agent-check {
+    flex: 0 0 auto !important;
+    color: var(--hm-accent) !important;
+    font-size: 20px !important;
+  }
+
+  .hermes-mobile-agent-manage {
+    width: 100% !important;
+    min-height: 48px !important;
+    margin-top: 12px !important;
+    border: 0 !important;
+    border-radius: 13px !important;
+    background: var(--hm-surface) !important;
+    color: var(--hm-accent) !important;
+    font-size: 13px !important;
+  }
+
+  .hermes-mobile-agent-empty {
+    padding: 16px 4px !important;
+    color: var(--hm-text-dim) !important;
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+  }
+}
+
+body {
+  min-height: 100dvh;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* The desktop renderer uses h-screen in several shell nodes. On Android,
+ * 100vh can include the hidden browser/navigation area; prefer the dynamic
+ * viewport while retaining the old value as a fallback. */
+[data-contrib-shell],
+[data-slot="sidebar-provider"] {
+  height: 100vh !important;
+  height: 100dvh !important;
+  height: var(--hermes-mobile-viewport-height, 100dvh) !important;
+  min-height: 0 !important;
+  max-height: var(--hermes-mobile-viewport-height, 100dvh);
+}
+
+/* Keep every modal usable in portrait phones, landscape phones and split
+ * screen. The max-height also prevents the keyboard from hiding actions. */
+[role="dialog"],
+[data-slot="dialog-content"],
+[data-slot="sheet-content"] {
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Boot/recovery cards are full-screen overlays rather than dialogs, so give
+ * them the same keyboard- and landscape-safe scrolling contract. */
+[data-boot-failure-overlay] {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+[data-boot-failure-card] {
+  width: min(100%, calc(100vw - 24px));
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px);
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+
+.hermes-mobile-image-thumb {
+  display: block;
+  width: min(100%, 360px);
+  min-height: 44px;
+  margin-top: 10px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  border-radius: 12px;
+  background: var(--hm-surface);
+  cursor: zoom-in;
+}
+
+.hermes-mobile-image-thumb img {
+  display: block;
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+}
+
+[data-hermes-image-viewer] {
+  position: fixed;
+  z-index: var(--z-native);
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: rgba(0, 0, 0, .94);
+  touch-action: none;
+}
+
+[data-hermes-image-viewer] > img {
+  max-width: 100vw;
+  max-height: 100dvh;
+  object-fit: contain;
+  transform-origin: center;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.hermes-mobile-image-close {
+  position: fixed;
+  z-index: 1;
+  top: max(12px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  border: 1px solid rgba(255,255,255,.35);
+  border-radius: 50%;
+  background: rgba(30,30,30,.85);
+  color: white;
+  font-size: 32px;
+  line-height: 1;
+}
+
+/* Safe-area padding is only non-zero on devices with a cutout/hinge inset. */
+[data-contrib-shell] {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Wide screens should not stretch the composer and reading column across a
+ * tablet. These are intentionally soft caps: pane resizing still works. */
+@media (min-width: 769px) {
+  [data-slot="composer"],
+  [data-slot="composer-root"] {
+    max-width: min(100%, 920px);
+  }
+
+  [data-slot="dialog-content"],
+  [data-slot="sheet-content"] {
+    max-width: min(92vw, 760px);
+  }
+}
+
+/* Landscape phones and small tablets have very little vertical room. Keep
+ * toolbars compact and let the message surface take the available height. */
+@media (max-width: 1024px) and (orientation: landscape) {
+  [data-contrib-shell] [class*="h-\\[34px\\]"] {
+    height: 30px !important;
+  }
+
+  [data-slot="composer-rich-input"] {
+    max-height: 28dvh;
+    overflow-y: auto;
+  }
+
+  [data-boot-failure-overlay] {
+    align-items: flex-start !important;
+    padding-block: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-bottom)) !important;
+  }
+
+  [data-boot-failure-card] {
+    margin-block: auto;
+  }
+}
+
+/* Foldables expose two horizontal viewport segments in newer Chromium. Keep
+ * interactive content away from the hinge and preserve a usable gutter. */
+@media (horizontal-viewport-segments: 2) {
+  [data-contrib-shell] {
+    /* Keep the two segments visually separated without assuming a particular
+     * hinge coordinate; Chromium still reports the full safe viewport here. */
+    column-gap: 16px;
+  }
+}
+
+@media (max-width: 1024px) {
+  /* ── 全局字级微调：手机上看清更多层级 ── */
+  :root {
+    --mobile-bump: 1.05;
+    --mobile-gutter: clamp(12px, 3vw, 24px);
+  }
+
+  /* Prevent flex children from forcing horizontal scrolling on narrow or
+   * rotated windows. */
+  [data-contrib-shell] > *,
+  [data-tree-group],
+  [data-tree-group] > * {
+    min-width: 0;
+  }
+
+  /* The desktop titlebar has controls for HUD, pane editing and swapping
+   * rails. Keep the two navigation actions and Settings within thumb reach. */
+  [aria-label="Window controls"] > button:nth-child(2),
+  [aria-label="窗口控件"] > button:nth-child(2),
+  [aria-label="App controls"] > button:not([aria-label="Open settings"]) {
+    display: none !important;
+  }
+
+  [aria-label="应用控件"] > button:not([aria-label="打开设置"]) {
+    display: none !important;
+  }
+
+  [aria-label="Window controls"],
+  [aria-label="窗口控件"],
+  [aria-label="应用控件"],
+  [aria-label="App controls"] {
+    top: max(2px, env(safe-area-inset-top)) !important;
+  }
+
+  /* Conversation text needs more width than the desktop reading gutter. */
+  [data-slot="aui_thread-content"] {
+    padding-inline: 12px !important;
+  }
+
+  pre,
+  code,
+  [data-slot="message-content"] {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  img,
+  video,
+  canvas,
+  iframe {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* ── 通用按钮：最小触控高度（只做高度下限；宽度交给作用域规则，
+   *     避免密集列表里的行内控件被整体撑爆）── */
+  button {
+    min-height: var(--hm-hit);
+  }
+
+  /* 图标型按钮（composer 里的 + 附件、语音、设置等） */
+  button[data-size="icon"] {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+  }
+  button[data-slot="tooltip-trigger"][data-size="icon"] {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+  }
+
+  /* 按钮内图标统一放大 */
+  button svg:not([class*="size-"]) {
+    width: 18px !important;
+    height: 18px !important;
+  }
+  button[size-3] svg,
+  button[class*="size-3"] svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  /* 按钮文字放大：text-xs → 14px */
+  button.text-xs {
+    font-size: 14px !important;
+    line-height: 20px !important;
+  }
+  button.text-sm {
+    font-size: 14px !important;
+  }
+
+  /* ── 输入框 / 文本域：更大更舒适 ── */
+  textarea,
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input:not([type]) {
+    font-size: 16px !important; /* 避免 iOS 聚焦缩放，也更好读 */
+  }
+
+  /* composer 输入区的最小高度 */
+  [data-slot="composer-rich-input"] {
+    width: 100%;
+    min-width: 0 !important;
+    min-height: 48px !important;
+    max-height: min(30dvh, 192px) !important;
+    padding: 10px 8px !important;
+    font-size: 16px !important;
+    line-height: 24px !important;
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  /* Put the editor on its own row. The desktop one-row layout left only
+   * 128px for typing on a 390px phone. Keep actions below it. */
+  [data-slot="composer-dock"]:not([data-popped-out]) {
+    left: 8px !important;
+    width: calc(100% - 16px) !important;
+    max-width: none !important;
+    translate: none !important;
+    transform: none !important;
+    padding-bottom: max(8px, env(safe-area-inset-bottom)) !important;
+  }
+
+  [data-slot="composer-fade"] > .grid.w-full {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-areas: "input input" "menu controls" !important;
+    align-items: center !important;
+    column-gap: 8px !important;
+    row-gap: 4px !important;
+  }
+
+  [data-slot="composer-fade"] > .grid.w-full > * {
+    min-width: 0 !important;
+  }
+
+  [data-slot="composer-fade"] [data-slot="composer-rich-input"] {
+    display: block;
+  }
+
+  [data-slot="composer-fade"] button[type="submit"] {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    border-radius: 12px !important;
+  }
+
+  /* Voice entry points are supported by the native Android microphone
+   * permission flow. Keep them visible and large enough to tap. */
+  [data-slot="composer-fade"] button[aria-label="Voice dictation"],
+  [data-slot="composer-fade"] button[aria-label="语音听写"],
+  [data-slot="composer-fade"] button[aria-label^="Start voice conversation"],
+  [data-slot="composer-fade"] button[aria-label="开始语音对话"] {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  /* Keep desktop-only wake-word controls out of the narrow composer row.
+   * Note the zh label is a prefix ("唤醒词:\"hey hermes\" — 已关闭"), not an
+   * exact match, so it needs its own ^= rule. */
+  [data-slot="composer-fade"] button[aria-label="Read replies aloud"],
+  [data-slot="composer-fade"] button[aria-label="朗读回复"],
+  [data-slot="composer-fade"] button[aria-label^="Wake word:"],
+  [data-slot="composer-fade"] button[aria-label^="唤醒词"] {
+    display: none !important;
+  }
+
+  /* Attachment removal is hover-only and only 14px wide in the desktop UI. */
+  [data-slot="composer-dock"] button[aria-label^="移除 "],
+  [data-slot="composer-dock"] button[aria-label^="Remove "] {
+    opacity: 1 !important;
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    top: -8px !important;
+    right: -8px !important;
+    border-radius: 12px !important;
+  }
+
+  [data-slot="composer-drag-region"] {
+    pointer-events: none !important;
+  }
+
+  [data-boot-failure-card] .flex.flex-wrap {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  [data-boot-failure-card] button {
+    width: 100%;
+    min-width: 0;
+    white-space: normal !important;
+  }
+
+  [data-boot-failure-card] .grid > div:not([class]) {
+    overflow-wrap: anywhere;
+  }
+
+  /* ── 侧边栏 / 导航项 ── */
+  [role="menuitem"],
+  [data-slot="dropdown-menu-item"],
+  .dropdown-menu-item,
+  button[class*="justify-start"] {
+    min-height: 44px;
+    font-size: 14px !important;
+  }
+
+  /* ── 工具栏 / 标题栏按钮 ── */
+  .titlebar-icon-button,
+  button[class*="titlebar"] {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  /* ── 会话列表条目：更高，更好点 ── */
+  [data-slot*="session"],
+  [class*="session-row"],
+  [class*="SessionRow"],
+  [class*="session-list"] > * {
+    min-height: 56px;
+  }
+
+  /* ── 面板 toggle / 折叠按钮 ── */
+  button[class*="chevron"],
+  button[class*="ChevronDown"],
+  button[aria-label*="toggle"] {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  /* ── 标签页 / 筛选 pills ── */
+  button[role="tab"],
+  [data-slot="segmented-control"] button,
+  button[class*="pill"] {
+    min-height: 40px;
+    font-size: 14px !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+
+  /* ── Form 控件：select / combo ── */
+  select,
+  [data-slot="select"],
+  [data-slot="combo"] {
+    font-size: 15px !important;
+    min-height: 44px;
+  }
+
+  /* ── 状态栏 / 底部操作条 ── */
+  footer[data-slot="statusbar"] button {
+    min-height: 36px;
+  }
+
+  /* ── 检查框 / 单选 ── */
+  [role="checkbox"],
+  [role="radio"] {
+    width: 22px !important;
+    height: 22px !important;
+    min-width: 22px !important;
+  }
+
+  /* ── 右键菜单 / 上下文菜单（长按呼出）── */
+  [data-slot="context-menu"] button,
+  [data-slot="context-menu"] [role="menuitem"] {
+    min-height: 44px;
+    font-size: 15px !important;
+  }
+
+  /* ── 对话框按钮 ── */
+  [data-slot="dialog"] button,
+  [class*="dialog"] button {
+    min-height: 44px;
+  }
+
+  /* Sheets/drawers should occupy the safe width, not the desktop fixed
+   * width, while retaining rounded corners on tablets and landscape. */
+  [data-slot="sheet-content"],
+  [data-slot="dialog-content"] {
+    width: calc(100vw - (2 * var(--mobile-gutter))) !important;
+    margin-inline: auto;
+  }
+
+  /* The connection-mode cards otherwise overlap because their equal-height
+   * grid tracks collapse in the mobile WebView. */
+  [class~="auto-rows-fr"] {
+    grid-auto-rows: auto !important;
+  }
+  [class~="auto-rows-fr"] > button {
+    min-height: 104px !important;
+    height: auto !important;
+  }
+
+  /* Android only ships a remote gateway bridge. Show the one connection mode
+   * that can actually be configured here, above its URL and sign-in fields. */
+  [class~="auto-rows-fr"] > button:nth-child(1),
+  [class~="auto-rows-fr"] > button:nth-child(2),
+  [class~="auto-rows-fr"] > button:nth-child(4) {
+    display: none !important;
+  }
+
+  [class~="auto-rows-fr"] > button:nth-child(3) {
+    min-height: 76px !important;
+  }
+}
+
+/* The desktop settings surface applies titlebar-sized padding to its full-
+ * screen overlay. On narrow phones that leaves only ~250 CSS px for forms,
+ * clipping model selectors and two-column controls. Preserve a small safe
+ * gutter and let the panel use the rest of the phone width. */
+@media (max-width: 767px) {
+  .fixed.inset-0.z-50[class*="backdrop-blur"] {
+    padding: 8px var(--mobile-gutter) !important;
+  }
+}
+
+@media (max-width: 360px) {
+  [data-boot-failure-card] .flex.flex-wrap {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Extra-wide tablets / desktop mode: preserve readable line length while
+ * leaving the side rails available for tools and sessions. */
+@media (min-width: 1280px) {
+  [data-slot="message-content"] {
+    max-width: 960px;
+  }
+}
+
+/* ── 触控强化 pass 2（真机审计后追加，窄屏生效）── */
+@media (max-width: 767px) {
+  /* 底部状态条：桌面 20px 高 / 11px 字太小 → 32px / 12.5px，且给手势条让位 */
+  footer[data-slot="statusbar"] {
+    height: 38px !important;
+    font-size: 12.5px !important;
+    padding-bottom: 2px;
+  }
+  footer[data-slot="statusbar"] button {
+    min-height: 38px;
+    font-size: 12.5px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+  footer[data-slot="statusbar"] [data-slot="dropdown-menu-trigger"] {
+    min-width: 40px;
+  }
+
+  /* 会话标签行：tab 高 28 → 40；关闭/新建按钮加宽到可点 */
+  .group\/tab {
+    min-height: 40px !important;
+  }
+  [role="tab"] button,
+  button[aria-label="新建会话标签"],
+  button[title*="新建"] {
+    min-width: 40px !important;
+    min-height: 40px !important;
+  }
+  button[aria-label="关闭"],
+  [role="tab"] [class*="close"] {
+    width: 36px !important;
+    height: 40px !important;
+  }
+
+  /* 滚动到底部悬浮按钮：29px → 44px 视觉与热区 */
+  .thread-jump-button {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  /* 输入框与状态条之间留呼吸位（手势条由原生 padding 让出，这里防贴边） */
+  [data-slot="composer-dock"] {
+    padding-bottom: 10px !important;
+  }
+
+  /* 消息操作按钮（复制/朗读/重试等） */
+  button[aria-label*="复制"],
+  button[aria-label*="朗读"],
+  button[aria-label*="重新生成"],
+  button[aria-label="语音听写"] {
+    min-width: 40px;
+    min-height: 40px;
+  }
+}
+
+/* ── pass 3：会话 tab 与浮动侧栏切换按钮避让 ── */
+@media (max-width: 767px) {
+  /* 侧栏切换钮 fixed 在 x=14-58（z-70），tab 条从 x=0 开始会重叠 →
+     给 tab 滚动容器加左 padding，把 NEW SESSION 文字推到按钮右侧 */
+  [data-slot="context-menu-trigger"] > div[class~="overflow-x-auto"] {
+    padding-left: 60px !important;
+  }
+}
+
+/* 0.2.7: compact-phone usability fixes from the 2026-09-27 device audit. */
+@media (max-width: 767px) {
+  /* The renderer already provides a compact TabDropdown for narrow screens.
+   * Keep that mobile control in row one and hide the desktop rail; showing both
+   * makes its expanded child links spill into the breadcrumb row. */
+  .grid:has(> aside [data-tour="nav-gateway"]) {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: 52px minmax(0, 1fr) !important;
+  }
+  .grid:has(> aside [data-tour="nav-gateway"]) > aside {
+    display: none !important;
+  }
+  .grid:has(> aside [data-tour="nav-gateway"]) > aside + div {
+    display: flex !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    height: 52px !important;
+    min-height: 52px !important;
+    align-items: center !important;
+    padding-right: 64px !important;
+    overflow: hidden !important;
+    border-bottom: 1px solid var(--dt-border, #334155);
+  }
+
+  /* The desktop breadcrumb reserves 44px because its link buttons inherit the
+   * mobile 44px hit-target rule. On a phone this makes the Settings → group →
+   * page trail collide visually with the first settings row. Keep the trail
+   * compact and single-line; the category rail above already supplies the
+   * primary navigation context. */
+  .grid:has(> aside [data-tour="nav-gateway"]) > main > nav[aria-label] {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    margin: 0 0 8px !important;
+    padding: 0 12px !important;
+    gap: 3px !important;
+    overflow: hidden !important;
+    font-size: 11px !important;
+    line-height: 18px !important;
+    white-space: nowrap !important;
+  }
+  .grid:has(> aside [data-tour="nav-gateway"]) > main > nav[aria-label] button,
+  .grid:has(> aside [data-tour="nav-gateway"]) > main > nav[aria-label] button.inline-flex.shrink-0.items-center.justify-center {
+    box-sizing: border-box !important;
+    width: auto !important;
+    height: 26px !important;
+    min-width: 0 !important;
+    min-height: 26px !important;
+    padding: 0 2px !important;
+    font-size: 11px !important;
+    line-height: 18px !important;
+  }
+  .grid:has(> aside [data-tour="nav-gateway"]) > main > nav[aria-label] [aria-current="page"] {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+  .grid:has(> aside [data-tour="nav-gateway"]) > main > nav[aria-label] > :first-child:not([aria-current]),
+  .grid:has(> aside [data-tour="nav-gateway"]) > main > nav[aria-label] > svg,
+  .grid:has(> aside [data-tour="nav-gateway"]) > main > nav[aria-label] > button {
+    display: none !important;
+  }
+
+  /* IME-safe panels use the viewport height supplied by mobile-ui.js. */
+  [role="dialog"],
+  [data-slot="dialog-content"],
+  [data-slot="sheet-content"],
+  [data-boot-failure-card] {
+    max-height: calc(var(--hermes-mobile-viewport-height, 100dvh) - 24px) !important;
+    box-sizing: border-box;
+  }
+
+  [data-boot-failure-card] input:not([type="checkbox"]),
+  [data-boot-failure-card] select,
+  [role="dialog"] input:not([type="checkbox"]),
+  [role="dialog"] select {
+    min-height: 44px !important;
+  }
+
+  /* 状态栏按钮是唯一的紧凑例外（40px）。不再用 Tailwind 万能选择器给所有
+   * 方形按钮统一撑 44px——那会把密集列表里的行内控件全部吹胀（Phase 1 收敛）。
+   * 图标按钮的热区由上面按组件作用域的规则保证。 */
+  footer[data-slot="statusbar"] button {
+    min-width: 40px !important;
+    min-height: 40px !important;
+  }
+}
+
+/* ── P0 修复：回弹 / 触控反馈 / 弹层宽度（docs/UI-OPTIMIZATION-PLAN.md Phase 0）── */
+
+/* 点按不再出现系统灰色高亮闪块，按压反馈交给各控件自身的 active 态。 */
+a,
+button,
+[role="button"],
+[role="menuitem"],
+[role="tab"],
+input,
+select,
+textarea,
+label {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 内部滚动容器禁止滚动链：列表滚到边界不再把弹性带给外层。
+ * WebView 原生侧的边缘拉伸由 MainActivity 的 OVER_SCROLL_NEVER 关闭，
+ * 这里负责 Web 层的滚动链（对每个候选容器声明是安全的：
+ * overscroll-behavior 只对真正可滚动的容器生效）。 */
+.hermes-mobile-hub,
+.hermes-mobile-agent-sheet,
+[data-hermes-mobile-chat-surface],
+[data-hermes-mobile-session-drawer] > [data-slot="sidebar"],
+[data-hermes-mobile-session-drawer] [data-slot="sidebar-content"],
+[data-slot="scroll-area"],
+[data-slot="scroll-area-viewport"],
+[role="dialog"],
+[data-slot="dialog-content"],
+[data-slot="sheet-content"],
+[data-boot-failure-overlay],
+[data-boot-failure-card],
+pre {
+  overscroll-behavior: contain;
+}
+
+/* 弹出菜单宿主（模型选择、下拉、右键菜单）此前完全没有宽度/高度约束，
+ * 长列表选项在窄屏上会超宽或伸出屏幕。层级必须高于移动 chrome（z 80），
+ * 否则菜单顶部（含搜索框）会被快捷条整条盖住。 */
+@media (max-width: 1024px) {
+  [data-radix-popper-content-wrapper] {
+    z-index: var(--z-sheet) !important;
+    max-width: calc(100vw - 16px) !important;
+  }
+
+  [data-radix-popper-content-wrapper] > * {
+    max-height: calc(var(--hermes-mobile-viewport-height, 100dvh) - 32px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+/* ── Phase 1：通知横幅避让（N1）与键盘态布局（N2）── */
+
+/* N1：renderer 的 toast/通知栈固定悬浮在顶部（z 200），直接压住快捷条里的
+ * Agent 选择器和 ⚙，且跨页面不消失。统一把整个通知栈钉到 chrome 头部之下
+ * （会话内容顶部，可滚动区），控件不再被遮挡。实测横幅是 renderer 自定义
+ * 元素（类名含 z-over-modal，left-1/2 + translateX(-50%) 居中）——
+ * 只改 top 与 z，保留 transform 以维持水平居中。 */
+@media (max-width: 1024px) {
+  [data-sonner-toaster],
+  [data-radix-toast-viewport],
+  [class*="z-over-modal"] {
+    top: calc(var(--hm-header) + 8px) !important;
+    bottom: auto !important;
+    /* z 低于抽屉/弹层（86/90）：用户主动打开的界面优先于被动通知，
+     * 但仍高于普通内容。 */
+    z-index: var(--z-float) !important;
+  }
+
+  [data-sonner-toaster],
+  [data-sonner-toast] {
+    transform: none !important;
+  }
+}
+
+/* N2：键盘打开时收起底部导航——打字时导航不可用，收起后输入区贴住键盘。 */
+:root[data-hermes-mobile-keyboard="true"] .hermes-mobile-bottom-nav {
+  display: none !important;
+}
+
+:root[data-hermes-mobile-keyboard="true"] [data-hermes-mobile-chat-surface],
+:root[data-hermes-mobile-keyboard="true"] [data-hermes-mobile-session-drawer],
+:root[data-hermes-mobile-keyboard="true"] .hermes-mobile-hub {
+  inset: var(--hm-header) 0 0 !important;
+}
+
+/* ── Phase 2：过渡动画（Drawer / Hub）────────────────────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* 抽屉：从左侧滑入（依赖 JS 切换 .hm-drawer-open class） */
+  [data-hermes-mobile-session-drawer] {
+    transform: translateX(-100%);
+    transition: transform 220ms cubic-bezier(.25,.46,.45,.94);
+  }
+  [data-hermes-mobile-session-drawer].hm-drawer-open {
+    transform: translateX(0);
+  }
+
+  /* Hub：从底部升起 */
+  .hermes-mobile-hub {
+    transform: translateY(100%);
+    transition: transform 220ms cubic-bezier(.25,.46,.45,.94);
+  }
+  .hermes-mobile-hub.hm-hub-visible {
+    transform: translateY(0);
+  }
+}
+
+/* ── Phase 2：聊天区滚动边缘渐隐遮罩 ─────────────────────────────── */
+
+/* 聊天消息区上边缘渐隐，提示可向上滚动 */
+[data-hermes-mobile-chat-surface] {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0px,
+    black 24px
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0px,
+    black 24px
+  );
+  /* 遮罩只在有内容且未贴顶时生效；内容贴顶时移除遮罩 */
+}
+
+/* 消息列表滚动容器：下边缘渐隐提示可向上翻 */
+[data-hermes-mobile-chat-surface] [data-slot="scroll-area-viewport"],
+[data-hermes-mobile-chat-surface] [data-slot="thread-scroll"],
+[data-slot="aui_thread-content"] {
+  mask-image: linear-gradient(
+    to top,
+    transparent 0px,
+    black 32px
+  );
+  -webkit-mask-image: linear-gradient(
+    to top,
+    transparent 0px,
+    black 32px
+  );
+}
+
+/* 抽屉内会话列表：顶部渐隐提示可下拉 */
+[data-hermes-mobile-session-drawer] [data-slot="sidebar-content"] {
+  mask-image: linear-gradient(
+    to top,
+    transparent 0px,
+    black 28px
+  );
+  -webkit-mask-image: linear-gradient(
+    to top,
+    transparent 0px,
+    black 28px
+  );
+}
+
+/* ── Phase 2：会话列表空态 / 加载态占位 ─────────────────────────── */
+
+/* 抽屉内无会话时显示空态 */
+.hermes-mobile-session-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 24px;
+  color: var(--hm-text-dim);
+  font-size: 14px;
+  text-align: center;
+  min-height: 200px;
+}
+
+.hermes-mobile-session-empty .hermes-mobile-session-empty-icon {
+  font-size: 40px;
+  line-height: 1;
+  opacity: .4;
+}
+
+.hermes-mobile-session-empty p {
+  margin: 0;
+  color: var(--hm-text-dim);
+  font-size: 13px;
+  max-width: 220px;
+}
+
+/* 加载态：三个脉冲圆点 */
+.hermes-mobile-session-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 40px 24px;
+  min-height: 120px;
+}
+
+.hermes-mobile-session-loading span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--hm-border);
+  animation: hermes-pulse 1.2s ease-in-out infinite;
+}
+
+.hermes-mobile-session-loading span:nth-child(2) { animation-delay: .2s; }
+.hermes-mobile-session-loading span:nth-child(3) { animation-delay: .4s; }
+
+@keyframes hermes-pulse {
+  0%, 100% { transform: scale(.8); opacity: .4; }
+  50% { transform: scale(1.1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hermes-mobile-session-loading span {
+    animation: none;
+    opacity: .5;
+  }
+}
+
+/* ── Phase 2：长按会话行呼出 context-menu 引导提示 ───────────────── */
+
+/* 会话行长按提示徽章（首次出现后自动消失） */
+.hermes-mobile-session-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid var(--hm-border);
+  border-radius: 99px;
+  background: var(--hm-surface-raised);
+  color: var(--hm-text-dim);
+  font-size: 11px;
+  cursor: default;
+  pointer-events: none;
+  animation: hermes-hint-pop .35s cubic-bezier(.34,1.56,.64,1) forwards;
+  /* 8s 后淡出 */
+  animation-fill-mode: forwards;
+  animation-delay: 0s, 8s;
+}
+
+@keyframes hermes-hint-pop {
+  0% { opacity: 0; transform: scale(.85) translateY(4px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes hermes-hint-fade {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.hermes-mobile-session-hint.fade-out {
+  animation: hermes-hint-fade 600ms ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hermes-mobile-session-hint {
+    animation: none;
+    opacity: .7;
+  }
+}

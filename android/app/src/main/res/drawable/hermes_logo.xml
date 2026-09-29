@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hermes ☤ (Caduceus) 品牌标志 —— 带翼权杖，简化矢量 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- 背景圆 -->
+    <path
+        android:fillColor="#0d1117"
+        android:pathData="M100,100 m-92,0 a92,92 0 1,1 184,0 a92,92 0 1,1 -184,0" />
+
+    <!-- 权杖（竖杆 + 顶部圆球）-->
+    <path
+        android:strokeColor="#FFD700"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M100,42 L100,162" />
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M100,28 m-9,0 a9,9 0 1,1 18,0 a9,9 0 1,1 -18,0" />
+
+    <!-- 翅膀（左）-->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M94,44 C78,30 58,26 46,32 C52,40 62,50 74,56 C80,62 88,66 94,64 Z" />
+    <!-- 翅膀（右）-->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M106,44 C122,30 142,26 154,32 C148,40 138,50 126,56 C120,62 112,66 106,64 Z" />
+
+    <!-- 蛇（左）：S 形缠绕 -->
+    <path
+        android:strokeColor="#e6edf3"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M82,64 C66,72 66,88 84,100 C102,112 102,130 86,142" />
+    <!-- 蛇（右）：S 形缠绕（对称）-->
+    <path
+        android:strokeColor="#e6edf3"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M118,64 C134,72 134,88 116,100 C98,112 98,130 114,142" />
+</vector>

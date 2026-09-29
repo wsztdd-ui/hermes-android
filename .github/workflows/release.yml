@@ -1,0 +1,97 @@
+name: Release Android APK
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+env:
+  HERMES_SHA: 26f178e5fa78c691cadf847058ef1d55a707bfb0
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android API 34 build packages
+        run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
+      - name: Checkout pinned Hermes renderer
+        run: |
+          git init /tmp/hermes-agent
+          git -C /tmp/hermes-agent remote add origin https://github.com/NousResearch/hermes-agent.git
+          git -C /tmp/hermes-agent fetch --depth 1 origin "$HERMES_SHA"
+          git -C /tmp/hermes-agent checkout FETCH_HEAD
+      - name: Apply Android compatibility patch
+        run: git -C /tmp/hermes-agent apply --unidiff-zero "$GITHUB_WORKSPACE/patches/hermes-android-theme-async-effect.patch"
+      - name: Install renderer dependencies
+        working-directory: /tmp/hermes-agent
+        run: npm ci
+      - name: Generate renderer dependency license inventory
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/release-assets"
+          node scripts/generate-third-party-licenses.mjs /tmp/hermes-agent "$GITHUB_WORKSPACE/release-assets/THIRD_PARTY_LICENSES.json" "$GITHUB_WORKSPACE/release-assets/THIRD_PARTY_LICENSES.txt"
+      - name: Test theme lifecycle regression
+        working-directory: /tmp/hermes-agent/apps/desktop
+        run: npx vitest run src/themes/context.test.tsx
+      - name: Build renderer and unsigned/signed APK
+        env:
+          HERMES_SRC: /tmp/hermes-agent/apps/desktop
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/release.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          APP_VERSION=$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' android/app/build.gradle.kts | head -1)
+          if [ "$GITHUB_REF_NAME" != "v$APP_VERSION" ]; then
+            echo "Tag $GITHUB_REF_NAME must match app version v$APP_VERSION" >&2
+            exit 1
+          fi
+          if [ -n "${ANDROID_KEYSTORE_BASE64:-}" ]; then
+            if [ -z "${ANDROID_KEYSTORE_PASSWORD:-}" ] || [ -z "${ANDROID_KEY_ALIAS:-}" ] || [ -z "${ANDROID_KEY_PASSWORD:-}" ]; then
+              echo "Configure all four Android signing secrets or leave all of them empty." >&2
+              exit 1
+            fi
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_KEYSTORE_PATH"
+            export ANDROID_KEYSTORE_PATH ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD
+          else
+            if [ -n "${ANDROID_KEYSTORE_PASSWORD:-}${ANDROID_KEY_ALIAS:-}${ANDROID_KEY_PASSWORD:-}" ]; then
+              echo "Configure all four Android signing secrets or leave all of them empty." >&2
+              exit 1
+            fi
+            unset ANDROID_KEYSTORE_PATH ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD
+          fi
+          bash scripts/build-all.sh
+          ./android/gradlew -p android :app:assembleRelease
+          mkdir -p release-assets
+          if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
+            cp android/app/build/outputs/apk/release/app-release.apk "release-assets/Hermes-Android-${GITHUB_REF_NAME}-signed.apk"
+          else
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk "release-assets/Hermes-Android-${GITHUB_REF_NAME}-unsigned.apk"
+          fi
+          cp LICENSE release-assets/LICENSE-Hermes-Android-MIT.txt
+          cp THIRD_PARTY_NOTICES.md release-assets/THIRD_PARTY_NOTICES.md
+          cp third_party/Apache-2.0.txt release-assets/Apache-2.0.txt
+          {
+            echo "tag=$GITHUB_REF_NAME"
+            echo "app_version=$APP_VERSION"
+            echo "android_source_commit=$(git rev-parse HEAD)"
+            echo "hermes_renderer_commit=$HERMES_SHA"
+          } > release-assets/BUILD_INFO.txt
+          sha256sum release-assets/*.apk > release-assets/SHA256SUMS
+      - name: Publish draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: false
+          files: release-assets/*

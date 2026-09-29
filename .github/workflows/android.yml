@@ -1,0 +1,64 @@
+name: Android
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  HERMES_SHA: 26f178e5fa78c691cadf847058ef1d55a707bfb0
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android API 34 build packages
+        run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Checkout pinned Hermes renderer
+        run: |
+          git init /tmp/hermes-agent
+          git -C /tmp/hermes-agent remote add origin https://github.com/NousResearch/hermes-agent.git
+          git -C /tmp/hermes-agent fetch --depth 1 origin "$HERMES_SHA"
+          git -C /tmp/hermes-agent checkout FETCH_HEAD
+      - name: Apply Android compatibility patch
+        run: git -C /tmp/hermes-agent apply --unidiff-zero "$GITHUB_WORKSPACE/patches/hermes-android-theme-async-effect.patch"
+      - name: Install renderer dependencies
+        working-directory: /tmp/hermes-agent
+        run: npm ci
+      - name: Generate renderer dependency license inventory
+        run: node scripts/generate-third-party-licenses.mjs /tmp/hermes-agent "$GITHUB_WORKSPACE/THIRD_PARTY_LICENSES.json" "$GITHUB_WORKSPACE/THIRD_PARTY_LICENSES.txt"
+      - name: Test theme lifecycle regression
+        working-directory: /tmp/hermes-agent/apps/desktop
+        run: npx vitest run src/themes/context.test.tsx
+      - name: Build Android debug and release candidates
+        env:
+          HERMES_SRC: /tmp/hermes-agent/apps/desktop
+        run: bash scripts/build-all.sh
+      - name: Build unsigned release candidate
+        run: ./android/gradlew -p android :app:assembleRelease
+      - name: Validate generated frontend
+        run: node scripts/validate-frontend.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hermes-android
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/release/app-release-unsigned.apk
+            THIRD_PARTY_LICENSES.json
+            THIRD_PARTY_LICENSES.txt
+            LICENSE
+            THIRD_PARTY_NOTICES.md
+            third_party/Apache-2.0.txt
