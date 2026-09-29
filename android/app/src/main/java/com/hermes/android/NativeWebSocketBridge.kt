@@ -8,6 +8,7 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import java.util.concurrent.TimeUnit
+import java.security.MessageDigest
 
 /**
  * 原生 WebSocket 桥。绕过 WebView JS WebSocket 的 Origin 检查问题：
@@ -21,7 +22,14 @@ import java.util.concurrent.TimeUnit
  *   原生收到消息 → evaluateJavascript("window.__hermesWs.onMessage(<id>, encodeURIComponent(data))")
  *   原生 close/error → evaluateJavascript("window.__hermesWs.onClose(<id>, code, reason)")
  */
-class NativeWebSocketBridge(private val webView: WebView) {
+class NativeWebSocketBridge(private val webView: WebView, private val capability: String) {
+
+    private fun requireCapability(provided: String) {
+        check(MessageDigest.isEqual(
+            capability.toByteArray(Charsets.UTF_8),
+            provided.toByteArray(Charsets.UTF_8)
+        )) { "Untrusted frame cannot use the native WebSocket bridge" }
+    }
 
     companion object {
         const val TAG = "NativeWsBridge"
@@ -46,7 +54,9 @@ class NativeWebSocketBridge(private val webView: WebView) {
 
     /** JS 调：建立 WS 连接，返回 sessionId（整数）。 */
     @JavascriptInterface
-    fun nativeWsConnect(url: String): Int {
+    fun nativeWsConnect(capability: String, url: String): Int {
+        requireCapability(capability)
+        require(url.startsWith("wss://", ignoreCase = true)) { "Only secure WebSocket URLs are supported" }
         val id = synchronized(this) { ++nextId }
         // OAuth tickets and token credentials can live in the query string.
         android.util.Log.d(TAG, "nativeWsConnect id=$id url=${url.substringBefore('?')}")
@@ -93,14 +103,16 @@ class NativeWebSocketBridge(private val webView: WebView) {
 
     /** JS 调：发文本消息。 */
     @JavascriptInterface
-    fun nativeWsSend(id: Int, data: String): Boolean {
+    fun nativeWsSend(capability: String, id: Int, data: String): Boolean {
+        requireCapability(capability)
         val ws = sockets[id] ?: return false
         return ws.send(data)
     }
 
     /** JS 调：关闭连接。 */
     @JavascriptInterface
-    fun nativeWsClose(id: Int) {
+    fun nativeWsClose(capability: String, id: Int) {
+        requireCapability(capability)
         sockets.remove(id)?.close(1000, "client close")
     }
 

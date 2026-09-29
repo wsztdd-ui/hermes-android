@@ -24,6 +24,9 @@ import java.util.ArrayDeque
 import androidx.appcompat.app.AppCompatActivity
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewAssetLoader.AssetsPathHandler
+import java.io.ByteArrayInputStream
+import java.security.SecureRandom
+import android.util.Base64
 
 /**
  * 主 Activity：全屏 WebView 壳，加载内置的 Desktop renderer 编译产物。
@@ -51,6 +54,10 @@ class MainActivity : AppCompatActivity() {
     private var pendingAudioPermissionRequest: PermissionRequest? = null
     private val audioPermissionRequestCode = 2301
     private var startupWatchGeneration = 0
+    private val bridgeCapability: String by lazy {
+        ByteArray(32).also { SecureRandom().nextBytes(it) }
+            .let { Base64.encodeToString(it, Base64.NO_WRAP or Base64.URL_SAFE) }
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -98,12 +105,12 @@ class MainActivity : AppCompatActivity() {
 
         configureWebView()
 
-        bridge = MobileBridge(this, webView)
-        webView.addJavascriptInterface(bridge, "__hermesMobile")
+        bridge = MobileBridge(this, webView, bridgeCapability)
+        webView.addJavascriptInterface(bridge, "__hermesMobileRaw")
 
         // 原生 WebSocket 桥：绕过 WebView JS WebSocket 的 Origin 检查
-        val wsBridge = NativeWebSocketBridge(webView)
-        webView.addJavascriptInterface(wsBridge, "__hermesWsNative")
+        val wsBridge = NativeWebSocketBridge(webView, bridgeCapability)
+        webView.addJavascriptInterface(wsBridge, "__hermesWsNativeRaw")
 
         // 后台消息通知：渠道初始化 + API 33+ 运行时权限（一次性请求，不循环打扰）
         HermesNotifier.init(this)
@@ -165,7 +172,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun log(msg: String) {
-        Log.d(TAG, msg)
+        if (BuildConfig.DEBUG) Log.d(TAG, msg)
         synchronized(recentLogLock) {
             recentLogLines.addLast("${java.time.LocalTime.now().withNano(0)} $msg")
             while (recentLogLines.size > 250) recentLogLines.removeFirst()
@@ -181,6 +188,36 @@ class MainActivity : AppCompatActivity() {
 
     internal fun recentLogs(): List<String> = synchronized(recentLogLock) {
         recentLogLines.toList()
+    }
+
+    private fun isAppAssetOrigin(uri: Uri): Boolean =
+        uri.scheme.equals("https", ignoreCase = true) &&
+            uri.host.equals(APP_ASSET_HOST, ignoreCase = true) &&
+            (uri.port == -1 || uri.port == 443)
+
+    private fun isAppIndex(uri: Uri): Boolean =
+        isAppAssetOrigin(uri) && uri.path == "/assets/www/index.html" && uri.query == null
+
+    /** Only the top-level, app-owned HTML response receives the per-process bridge capability. */
+    private fun bridgeBootstrapScript(): String {
+        val key = JSONObject.quote(bridgeCapability)
+        return """<script>
+            (() => {
+              if (window !== window.top) return;
+              const capability = $key;
+              const bind = (raw, methods) => Object.freeze(Object.fromEntries(
+                methods.map(name => [name, (...args) => raw[name](capability, ...args)])));
+              Object.defineProperty(window, '__hermesMobile', { value: bind(window.__hermesMobileRaw, [
+                'getRecentLogs', 'revealLogs', 'secureToken', 'login', 'loginAsync',
+                'clearSession', 'hasSessionFor', 'clearSessionFor', 'setNotifyEnabled',
+                'setNotifySessions', 'saveFileBase64', 'nativeFetch', 'nativeFetchAsync',
+                'openExternal', 'saveImage'
+              ]), configurable: false, writable: false });
+              Object.defineProperty(window, '__hermesWsNative', { value: bind(window.__hermesWsNativeRaw, [
+                'nativeWsConnect', 'nativeWsSend', 'nativeWsClose'
+              ]), configurable: false, writable: false });
+            })();
+            </script>""".trimIndent()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -221,6 +258,14 @@ class MainActivity : AppCompatActivity() {
                 view: WebView,
                 request: WebResourceRequest
             ): WebResourceResponse? {
+                if (request.isForMainFrame && isAppIndex(request.url)) {
+                    val html = assets.open("www/index.html").bufferedReader(Charsets.UTF_8).use { it.readText() }
+                    val protectedHtml = html.replaceFirst("<head>", "<head>${bridgeBootstrapScript()}")
+                    return WebResourceResponse(
+                        "text/html", "UTF-8",
+                        ByteArrayInputStream(protectedHtml.toByteArray(Charsets.UTF_8))
+                    )
+                }
                 val resp = assetLoader.shouldInterceptRequest(request.url)
                 if (resp == null) {
                     val url = request.url.toString()
@@ -236,16 +281,18 @@ class MainActivity : AppCompatActivity() {
                 view: WebView,
                 request: WebResourceRequest
             ): Boolean {
-                val url = request.url.toString()
-                return if (url.startsWith("https://$APP_ASSET_HOST")) {
+                val uri = request.url
+                return if (isAppAssetOrigin(uri)) {
                     false
                 } else {
-                    try {
-                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                        true
-                    } catch (_: Exception) {
-                        false
+                    if (request.isForMainFrame && (uri.scheme == "https" || uri.scheme == "http")) {
+                        try {
+                            startActivity(Intent(Intent.ACTION_VIEW, uri))
+                        } catch (_: Exception) {
+                            log("无法打开外部链接")
+                        }
                     }
+                    true
                 }
             }
 
@@ -286,7 +333,9 @@ class MainActivity : AppCompatActivity() {
                 val audioResource = PermissionRequest.RESOURCE_AUDIO_CAPTURE
                 log("WebView permission requested: ${permissionRequest.resources?.joinToString()}")
                 // 只允许用户触发的麦克风采集；摄像头等未支持资源不授权。
-                if (permissionRequest.resources?.contains(audioResource) != true) {
+                if (!isAppAssetOrigin(permissionRequest.origin) ||
+                    permissionRequest.resources?.contentEquals(arrayOf(audioResource)) != true
+                ) {
                     permissionRequest.deny()
                     return
                 }
@@ -319,6 +368,10 @@ class MainActivity : AppCompatActivity() {
                 defaultValue: String?,
                 result: android.webkit.JsPromptResult?
             ): Boolean {
+                if (url == null || !isAppAssetOrigin(Uri.parse(url))) {
+                    result?.cancel()
+                    return true
+                }
                 // 用原生 AlertDialog 显示 prompt
                 val builder = android.app.AlertDialog.Builder(this@MainActivity)
                 builder.setTitle(message ?: "")

@@ -31,7 +31,18 @@ import java.util.concurrent.Executors
  *    把 session cookie 存进 CookieManager（与 WebView 共享）。
  *  - secureToken / openExternal / saveImage
  */
-class MobileBridge(private val activity: Activity, private val webView: WebView) {
+class MobileBridge(
+    private val activity: Activity,
+    private val webView: WebView,
+    private val capability: String
+) {
+
+    private fun requireCapability(provided: String) {
+        check(MessageDigest.isEqual(
+            capability.toByteArray(Charsets.UTF_8),
+            provided.toByteArray(Charsets.UTF_8)
+        )) { "Untrusted frame cannot use the native bridge" }
+    }
 
     private val secureStore = SecureTokenStore(activity)
     private val cookieManager: CookieManager = CookieManager.getInstance()
@@ -41,13 +52,15 @@ class MobileBridge(private val activity: Activity, private val webView: WebView)
     private val sessionCookieLock = Any()
 
     @JavascriptInterface
-    fun getRecentLogs(): String {
+    fun getRecentLogs(capability: String): String {
+        requireCapability(capability)
         val lines = (activity as? MainActivity)?.recentLogs().orEmpty()
         return JSONArray(lines).toString()
     }
 
     @JavascriptInterface
-    fun revealLogs() {
+    fun revealLogs(capability: String) {
+        requireCapability(capability)
         val lines = (activity as? MainActivity)?.recentLogs().orEmpty()
         activity.runOnUiThread {
             val content = lines.takeLast(120).joinToString("\n").ifBlank {
@@ -66,7 +79,8 @@ class MobileBridge(private val activity: Activity, private val webView: WebView)
     }
 
     @JavascriptInterface
-    fun secureToken(method: String, key: String, value: String): String {
+    fun secureToken(capability: String, method: String, key: String, value: String): String {
+        requireCapability(capability)
         return try {
             when (method) {
                 "get" -> secureStore.get(key) ?: ""
@@ -96,7 +110,8 @@ class MobileBridge(private val activity: Activity, private val webView: WebView)
      * 返回 '{"ok":true}' 或 '{"ok":false,"error":"..."}'。
      */
     @JavascriptInterface
-    fun login(url: String, provider: String, username: String, password: String): String {
+    fun login(capability: String, url: String, provider: String, username: String, password: String): String {
+        requireCapability(capability)
         return try {
             requireHttps(url)
             val loginOrigin = httpsOrigin(url)
@@ -169,9 +184,10 @@ class MobileBridge(private val activity: Activity, private val webView: WebView)
     }
 
     @JavascriptInterface
-    fun loginAsync(url: String, provider: String, username: String, password: String, requestId: Int) {
+    fun loginAsync(capability: String, url: String, provider: String, username: String, password: String, requestId: Int) {
+        requireCapability(capability)
         fetchExecutor.execute {
-            val result = login(url, provider, username, password)
+            val result = login(capability, url, provider, username, password)
             val quoted = JSONObject.quote(result)
             webView.post {
                 webView.evaluateJavascript(
@@ -183,7 +199,8 @@ class MobileBridge(private val activity: Activity, private val webView: WebView)
     }
 
     @JavascriptInterface
-    fun clearSession() {
+    fun clearSession(capability: String) {
+        requireCapability(capability)
         synchronized(sessionCookieLock) {
             for (origin in readSessionOriginsLocked()) {
                 secureStore.del(sessionCookieKey("session_cookie_at", origin))
@@ -200,7 +217,8 @@ class MobileBridge(private val activity: Activity, private val webView: WebView)
     }
 
     @JavascriptInterface
-    fun hasSessionFor(url: String): Boolean {
+    fun hasSessionFor(capability: String, url: String): Boolean {
+        requireCapability(capability)
         val origin = httpsOrigin(url) ?: return false
         return synchronized(sessionCookieLock) {
             !secureStore.get(sessionCookieKey("session_cookie_at", origin)).isNullOrBlank() ||
@@ -209,7 +227,8 @@ class MobileBridge(private val activity: Activity, private val webView: WebView)
     }
 
     @JavascriptInterface
-    fun clearSessionFor(url: String) {
+    fun clearSessionFor(capability: String, url: String) {
+        requireCapability(capability)
         val origin = httpsOrigin(url) ?: return
         synchronized(sessionCookieLock) {
             secureStore.del(sessionCookieKey("session_cookie_at", origin))
@@ -229,13 +248,15 @@ class MobileBridge(private val activity: Activity, private val webView: WebView)
 
     /** JS 同步后台通知开关（更多页）。 */
     @JavascriptInterface
-    fun setNotifyEnabled(enabled: Boolean) {
+    fun setNotifyEnabled(capability: String, enabled: Boolean) {
+        requireCapability(capability)
         HermesNotifier.enabled = enabled
     }
 
     /** JS 同步 runtime session id → {title, stored} 元数据，供通知标题与点按跳转。 */
     @JavascriptInterface
-    fun setNotifySessions(json: String) {
+    fun setNotifySessions(capability: String, json: String) {
+        requireCapability(capability)
         HermesNotifier.setSessions(json)
     }
 
@@ -245,7 +266,8 @@ class MobileBridge(private val activity: Activity, private val webView: WebView)
      * 写存储权限。返回 '{"ok":true,"path":"下载/Hermes/…"}' 或 '{"ok":false,"error":…}'。
      */
     @JavascriptInterface
-    fun saveFileBase64(name: String, mime: String, dataUrl: String): String {
+    fun saveFileBase64(capability: String, name: String, mime: String, dataUrl: String): String {
+        requireCapability(capability)
         return try {
             val base64 = if (dataUrl.contains(",")) dataUrl.substringAfter(',') else dataUrl
             val bytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT)
@@ -302,14 +324,16 @@ class MobileBridge(private val activity: Activity, private val webView: WebView)
      * 返回：JSON '{"status":200,"body":"...","error":null}'
      */
     @JavascriptInterface
-    fun nativeFetch(url: String, optionsJson: String): String {
+    fun nativeFetch(capability: String, url: String, optionsJson: String): String {
+        requireCapability(capability)
         // Compatibility path for older bridge callers. New renderer builds use
         // nativeFetchAsync so a slow tunnel cannot block the WebView thread.
         return performNativeFetch(url, optionsJson)
     }
 
     @JavascriptInterface
-    fun nativeFetchAsync(url: String, optionsJson: String, requestId: Int) {
+    fun nativeFetchAsync(capability: String, url: String, optionsJson: String, requestId: Int) {
+        requireCapability(capability)
         fetchExecutor.execute {
             val result = performNativeFetch(url, optionsJson)
             val quoted = JSONObject.quote(result)
@@ -416,7 +440,8 @@ class MobileBridge(private val activity: Activity, private val webView: WebView)
     }
 
     @JavascriptInterface
-    fun openExternal(url: String) {
+    fun openExternal(capability: String, url: String) {
+        requireCapability(capability)
         try {
             requireWebUrl(url)
             activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
@@ -426,7 +451,8 @@ class MobileBridge(private val activity: Activity, private val webView: WebView)
     }
 
     @JavascriptInterface
-    fun saveImage(url: String) {
+    fun saveImage(capability: String, url: String) {
+        requireCapability(capability)
         try {
             requireWebUrl(url)
             activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))

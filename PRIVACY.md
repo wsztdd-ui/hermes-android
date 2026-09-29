@@ -8,13 +8,16 @@ You choose the Gateway URL and credentials in the app.
   operator controls server-side logging and retention.
 - **Credentials:** connection tokens are encrypted at rest with Android
   Keystore-backed AES-GCM. Password/cookie authentication uses WebView cookies
-  for the configured Gateway. Removing a connection or clearing app data
-  removes the corresponding local state.
+  for the configured Gateway. Removing a connection deletes its stored token
+  and connection entry, but may leave Gateway session cookies and cached chat
+  data on the device. Clearing the app's data in Android settings removes the
+  app's local data, including those cookies and caches.
 - **Attachments:** selected files are made available to the renderer and are
   sent only when the user submits them to a conversation. Review file contents
   before sending.
 - **Microphone:** Android declares the audio permission for voice input. The
-  app requests access only after a WebView audio-capture permission request;
+  app accepts audio-capture requests only from its own application origin and
+  requests Android permission when needed;
   the user can deny it in Android settings. Voice audio and transcription may
   be processed by the renderer's configured speech service or the connected
   Gateway, depending on the renderer version and configuration.

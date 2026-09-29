@@ -70,7 +70,8 @@ function buildGatewayWsUrlWithTicket(baseUrl, ticket) {
   return `${wsScheme}://${parsed.host}${prefix}/api/ws?ticket=${encodeURIComponent(ticket)}`
 }
 
-// secureToken：优先用 Android Keystore（原生桥），回退 local localStorage。
+// Android must keep secrets in the native Keystore bridge. Browser-only previews
+// can use localStorage, but an Android bridge failure must never store plaintext.
 // 原生桥是扁平的 JSBridge 方法：__hermesMobile.secureToken(method, key, value)
 // 返回 "ok" / 明文值 / ""（未找到）；也兼容可选的对象嵌套形式 {get,set,del}。
 
@@ -114,7 +115,18 @@ function mobileSessionMatches(remoteUrl) {
 
 async function secureGet(key) {
   const v = mobileSecureCall('get', key, null)
-  if (v && v !== 'error:not-found') return v
+  if (typeof v === 'string' && v && !v.startsWith('error:')) return v
+  if (window.__hermesMobileRaw || /\bAndroid\b/i.test(navigator.userAgent)) {
+    if (v === null || (typeof v === 'string' && v.startsWith('error:'))) return null
+    // Upgrade plaintext secrets written by older versions before using them.
+    try {
+      const legacy = localStorage.getItem(`hermes:secret:${key}`)
+      if (!legacy) return null
+      if (mobileSecureCall('set', key, legacy) !== 'ok') return null
+      localStorage.removeItem(`hermes:secret:${key}`)
+      return legacy
+    } catch { return null }
+  }
   try {
     return localStorage.getItem(`hermes:secret:${key}`)
   } catch {
@@ -124,7 +136,13 @@ async function secureGet(key) {
 
 async function secureSet(key, value) {
   const r = mobileSecureCall('set', key, value)
-  if (r === 'ok') return
+  if (r === 'ok') {
+    try { localStorage.removeItem(`hermes:secret:${key}`) } catch {}
+    return
+  }
+  if (window.__hermesMobileRaw || /\bAndroid\b/i.test(navigator.userAgent)) {
+    throw new Error('Android secure storage unavailable')
+  }
   try {
     if (value == null) localStorage.removeItem(`hermes:secret:${key}`)
     else localStorage.setItem(`hermes:secret:${key}`, value)
@@ -134,7 +152,10 @@ async function secureSet(key, value) {
 }
 
 async function secureDel(key) {
-  mobileSecureCall('del', key, null)
+  const r = mobileSecureCall('del', key, null)
+  if ((window.__hermesMobileRaw || /\bAndroid\b/i.test(navigator.userAgent)) && r !== 'ok') {
+    throw new Error('Android secure storage unavailable')
+  }
   try {
     localStorage.removeItem(`hermes:secret:${key}`)
   } catch {
@@ -731,11 +752,11 @@ function maskToken(token) {
 }
 
 async function connectionsRemove(id) {
+  await secureDel(`token:${id}`)
   registry.connections = registry.connections.filter(c => c.id !== id)
   if (registry.primary === id) registry.primary = 'local'
   if (registry.lastUsed === id) registry.lastUsed = null
   persistRegistry(registry)
-  await secureDel(`token:${id}`)
   return { ok: true, registry: registryPublicView() }
 }
 

@@ -19,6 +19,16 @@ if [ -z "$ANDROID_HOME" ]; then
 fi
 export ANDROID_HOME ANDROID_SDK_ROOT="$ANDROID_HOME"
 
+if [ ! -s "$ROOT_DIR/THIRD_PARTY_LICENSES.txt" ]; then
+  echo "Generate THIRD_PARTY_LICENSES.txt from the pinned renderer before building an APK." >&2
+  exit 2
+fi
+NOTICES_DIR="$ANDROID_DIR/app/src/main/assets/notices"
+mkdir -p "$NOTICES_DIR"
+cp "$ROOT_DIR/LICENSE" "$ROOT_DIR/PRIVACY.md" "$ROOT_DIR/THIRD_PARTY_NOTICES.md" \
+  "$ROOT_DIR/THIRD_PARTY_LICENSES.json" "$ROOT_DIR/THIRD_PARTY_LICENSES.txt" \
+  "$ROOT_DIR/third_party/Apache-2.0.txt" "$NOTICES_DIR/"
+
 echo "JAVA_HOME: $JAVA_HOME"
 echo "ANDROID_HOME: $ANDROID_HOME"
 

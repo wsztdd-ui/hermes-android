@@ -55,6 +55,12 @@ bash "$SCRIPT_DIR/copy-frontend.sh" "$DIST"
 echo "[3.5/4] 校验前端产物"
 node "$SCRIPT_DIR/validate-frontend.mjs" "$ASSETS"
 
+# Generate notices from the exact renderer checkout bundled into the APK.
+node "$SCRIPT_DIR/generate-third-party-licenses.mjs" \
+  "$HERMES_SRC/../.." \
+  "$ROOT_DIR/THIRD_PARTY_LICENSES.json" \
+  "$ROOT_DIR/THIRD_PARTY_LICENSES.txt"
+
 # 4. 打包 APK
 echo "[4/4] Gradle 打包 APK"
 bash "$SCRIPT_DIR/build-apk.sh" "$@"

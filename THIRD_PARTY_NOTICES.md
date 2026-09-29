@@ -8,7 +8,7 @@ Android compatibility changes are maintained in `patches/`.
 The Android APK includes the following direct runtime libraries and their
 transitive AndroidX / Kotlin / Okio dependencies. They are licensed under
 Apache License 2.0; the full license text is included at
-`third_party/Apache-2.0.txt` and attached to draft releases:
+`third_party/Apache-2.0.txt` and attached to releases:
 
 - AndroidX AppCompat and Core KTX
 - AndroidX WebKit
@@ -24,7 +24,7 @@ text. Source: https://github.com/microsoft/vscode-codicons. The icons are used
 without modifications.
 
 The Web renderer depends on a larger npm dependency tree. Each GitHub Actions
-build and draft Release attaches `THIRD_PARTY_LICENSES.json` and
+build and Release attaches `THIRD_PARTY_LICENSES.json` and
 `THIRD_PARTY_LICENSES.txt`, generated from the pinned renderer's npm v3
 lockfile dependency closure for the build platform (including optional
 dependencies that resolve for that platform and required peer dependencies;
