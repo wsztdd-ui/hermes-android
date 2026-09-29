@@ -14,10 +14,6 @@ Hermes Android is a native Android client. It hosts the Hermes Desktop renderer 
 - A renderer crash after repeated light/dark theme changes passed real-device retesting. The fix is maintained as a reviewable patch and applied by CI to the pinned Hermes upstream commit.
 - Voice input, production signing, system notifications, and a broad device matrix have not been accepted. The 1.0.0 Debug build passed 67/67 regression checks on a vivo Android 16 device connected to a live Gateway. The device's system-level app notification switch is off, so notification drawer display remains unverified. See [testing notes](TESTING.md) and [release instructions](docs/RELEASING.md).
 
-## Development
-
-This project was developed entirely with AI: AI generated the code and documentation, while the maintainer provided requirements and the test environment and performed acceptance testing.
-
 ## Features
 
 - **Full client in one interface** (the app uses its own rendered interface at all screen sizes): chat; session pinning, renaming, archiving, and deletion; tasks with approval/question cards and scheduled tasks; skills and tool toggles; MCP management; and file browsing, preview, editing, and download to the phone.

@@ -8,7 +8,8 @@
 set -euo pipefail
 
 DIST="${1:?usage: copy-frontend.sh <distPath>}"
-ASSETS_DIR="$(cd "$(dirname "$0")/../android/app/src/main/assets" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ASSETS_DIR="$SCRIPT_DIR/../android/app/src/main/assets"
 WWW="$ASSETS_DIR/www"
 
 echo "dist:    $DIST"
@@ -20,6 +21,7 @@ if [ ! -d "$DIST" ]; then
 fi
 
 # 清理旧产物，避免残留
+mkdir -p "$ASSETS_DIR"
 rm -rf "$WWW"
 mkdir -p "$WWW"
 
