@@ -247,7 +247,7 @@ function activeConnection() {
   if (exact) return exact
   // primary/last-used 可能悬空（注册表迁移/重生成 id 后未同步）：回落到第一个
   // 有 URL 的远程连接，而不是 local 占位（url 为空 → 一切请求 Invalid URL，
-  // 状态永远「连接失败」且到不了登录层——真机实测复现）。
+  // status stays disconnected and the login layer cannot be reached.
   const usable = registry.connections.find(c => c.kind === 'remote' && String(c.url || '').trim())
   return usable || registry.connections.find(c => c.id === 'local') || null
 }
@@ -1167,8 +1167,8 @@ async function runOauthLoginConnectionConfig(remoteUrl) {
   return new Promise(resolve => {
     const overlay = document.createElement('div')
     overlay.setAttribute('data-hermes-login-overlay', '')
-    // pointer-events:auto 必须显式声明：renderer 的 Radix 弹层/滚动锁会把 body 设成
-    // pointer-events:none，登录层若继承该状态会整层点不上（真机 vivo 实测复现）。
+    // Explicitly allow pointer events because renderer dialogs and scroll locks
+    // can set pointer-events:none on body.
     overlay.style.cssText = 'position:fixed;top:0;left:0;z-index:2147483647;box-sizing:border-box;width:100%;height:var(--hermes-mobile-viewport-height,100dvh);display:flex;align-items:center;justify-content:center;padding:12px;background:rgba(0,0,0,.68);font-family:system-ui,sans-serif;pointer-events:auto'
     const card = document.createElement('form')
     card.style.cssText = 'box-sizing:border-box;width:min(460px,100%);max-height:calc(var(--hermes-mobile-viewport-height,100dvh) - 24px);display:flex;flex-direction:column;padding:20px;border:1px solid #334155;border-radius:16px;background:#111827;color:#e5e7eb;box-shadow:0 20px 60px #0008'

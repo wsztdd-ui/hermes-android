@@ -1130,7 +1130,7 @@ body {
   }
 }
 
-/* ── 触控强化 pass 2（真机审计后追加，窄屏生效）── */
+/* Touch-friendly spacing for compact screens. */
 @media (max-width: 767px) {
   /* 底部状态条：桌面 20px 高 / 11px 字太小 → 32px / 12.5px，且给手势条让位 */
   footer[data-slot="statusbar"] {
@@ -1335,13 +1335,8 @@ pre {
   }
 }
 
-/* ── Phase 1：通知横幅避让（N1）与键盘态布局（N2）── */
-
-/* N1：renderer 的 toast/通知栈固定悬浮在顶部（z 200），直接压住快捷条里的
- * Agent 选择器和 ⚙，且跨页面不消失。统一把整个通知栈钉到 chrome 头部之下
- * （会话内容顶部，可滚动区），控件不再被遮挡。实测横幅是 renderer 自定义
- * 元素（类名含 z-over-modal，left-1/2 + translateX(-50%) 居中）——
- * 只改 top 与 z，保留 transform 以维持水平居中。 */
+/* Keep renderer notification banners below the mobile chrome while preserving
+ * their horizontal centering. */
 @media (max-width: 1024px) {
   [data-sonner-toaster],
   [data-radix-toast-viewport],

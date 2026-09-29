@@ -3,7 +3,7 @@
 // 依赖核心 bridge/mobile-view.js 暴露的 window.__hermesMV。
 // 页面：会话（REST /api/sessions 全管理）、任务（定时任务 + 审批中心）、
 // 技能（技能/工具集/MCP）、更多（模型设置/Agent 配置/连接/服务器）。
-// 端点与字段经本地网关实测（参照 jeromeleeqy-hash/Hermes-Android 数据层）。
+// API fields follow the upstream Hermes Gateway contract.
 // ---------------------------------------------------------------------------
 
 /* global window, document */

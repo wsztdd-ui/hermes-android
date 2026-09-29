@@ -9,10 +9,11 @@
  * 颜色全部引用 --hm-*，随 data-hm-theme 深浅切换，不得写死色值。 */
 
 /* ── 分层（仅移动视图内部使用）────────────────────────────────────── */
-/* 视图根 z 必须压过 renderer 自己的 Radix 模态框（实测恢复/设置门 z 1400）：
+/* Keep the mobile view above the renderer's own Radix modals (for example,
+ * the recovery and setup gates at z-index 1400):
  * 单界面设计下 renderer 只是承载层，它的桌面向弹窗（Hermes couldn't start、
- * setup gate）不能盖住移动应用——真机/模拟器实测这类弹窗会整屏遮挡并可点穿
- * （0.6.4 前登录框点不上的根源之一）。登录层（max int）仍在其上。 */
+ * setup gate) should not cover the mobile app. The native login layer
+ * (maximum z-index) remains above it. */
 :root {
   --hmv-z-view: 3000;
   --hmv-z-scrim: 910;
@@ -39,8 +40,8 @@
   font-size: 15px;
   line-height: 1.45;
   -webkit-tap-highlight-color: transparent;
-  /* body 的 pointer-events 可能被 renderer 的 Radix 弹层/滚动锁置为 none（泄漏时不恢复），
-   * 视图必须显式回到 auto，否则整个应用不可点（真机实测复现）。 */
+  /* Renderer dialogs or scroll locks can leave pointer events disabled on body;
+   * explicitly enable them on the mobile view. */
   pointer-events: auto;
   contain: layout style;
 }
@@ -738,8 +739,7 @@ html[data-hermes-mobile-keyboard] [data-hermes-mobile-view] .hmv-drawer-foot { d
 .hmv-request-card[data-req-state="expired"] { opacity: .55; }
 
 /* 对话框 */
-/* body 级浮层必须相对视图根（--hmv-z-view）计算：视图根自身是层叠上下文，
- * 固定 z 940 会整层沉到视图（3000）下面，被自己的列表行盖住（0.6.4 实测）。 */
+/* Position modal overlays relative to the mobile view's stacking context. */
 .hmv-dialog-overlay {
   position: absolute;
   inset: 0;

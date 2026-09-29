@@ -14,7 +14,7 @@
 //   - 附件：图片 image.attach_bytes(base64)，文本/其他 /api/files/upload 后
 //     以服务器路径内联进 prompt（与参考实现同语义）。
 //
-// 端点与字段经本地网关 (v0.21.5) 实测；参照项目 jeromeleeqy-hash/Hermes-Android。
+// API fields follow the pinned Hermes renderer and Gateway contracts.
 // ---------------------------------------------------------------------------
 
 /* global window, document, localStorage, WebSocket, FileReader, Image */
