@@ -153,13 +153,9 @@ async function secureSet(key, value) {
 
 async function secureDel(key) {
   const r = mobileSecureCall('del', key, null)
+  try { localStorage.removeItem(`hermes:secret:${key}`) } catch {}
   if ((window.__hermesMobileRaw || /\bAndroid\b/i.test(navigator.userAgent)) && r !== 'ok') {
     throw new Error('Android secure storage unavailable')
-  }
-  try {
-    localStorage.removeItem(`hermes:secret:${key}`)
-  } catch {
-    /* ignore */
   }
 }
 
