@@ -64,11 +64,11 @@ Download from [Releases](https://github.com/wsztdd-ui/hermes-android/releases/la
 
 | File | Notes |
 |---|---|
-| `Hermes-Android-1.0.0-debug.apk` | Debug-signed preview build for your own testing. |
+| `Hermes-Android-1.0.0.apk` | Release variant signed with the project's stable certificate; see `BUILD_INFO.txt` for the fingerprint. |
 
-Verify integrity with the `SHA256SUMS` file on the Release page; build and version details are in `BUILD_INFO.txt`. There is currently no signed, device-tested production Release APK.
+Verify integrity with the `SHA256SUMS` file on the Release page; build and version details are in `BUILD_INFO.txt`. The APK was launch-tested on an Android 14 emulator; end-to-end Gateway behavior and a broader device matrix still need validation.
 
-> Note: The debug APK is debug-signed and cannot be installed as an upgrade over a build signed with a different key (including a production key). Uninstall any existing differently-signed version first.
+> Note: This Release is signed with the project's certificate and cannot update a version signed with a different certificate. Uninstall a differently-signed existing version before first install.
 
 ## Tests and CI
 

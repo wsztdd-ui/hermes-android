@@ -2,5 +2,185 @@
   "khroma@2.1.0": {
     "license": "MIT",
     "evidence": "https://github.com/fabiospampinato/khroma#readme"
+  },
+  "@audiowave/core@0.3.1": {
+    "license": "MIT",
+    "copyright": "AudioWave Team",
+    "evidence": "https://www.npmjs.com/package/@audiowave/core/v/0.3.1"
+  },
+  "@audiowave/react@0.6.2": {
+    "license": "MIT",
+    "copyright": "teomyth",
+    "evidence": "https://www.npmjs.com/package/@audiowave/react/v/0.6.2"
+  },
+  "@nous-research/ui@0.18.2": {
+    "license": "MIT",
+    "copyright": "Nous Research",
+    "evidence": "https://www.npmjs.com/package/@nous-research/ui/v/0.18.2"
+  },
+  "@npmcli/agent@2.2.2": {
+    "license": "ISC",
+    "copyright": "GitHub Inc.",
+    "evidence": "https://www.npmjs.com/package/@npmcli/agent/v/2.2.2"
+  },
+  "@rolldown/binding-linux-x64-gnu@1.2.1": {
+    "license": "MIT",
+    "copyright": "2024-present VoidZero Inc. & Contributors",
+    "evidence": "https://github.com/rolldown/rolldown/blob/v1.2.1/LICENSE"
+  },
+  "@rolldown/binding-linux-x64-musl@1.2.1": {
+    "license": "MIT",
+    "copyright": "2024-present VoidZero Inc. & Contributors",
+    "evidence": "https://github.com/rolldown/rolldown/blob/v1.2.1/LICENSE"
+  },
+  "@rolldown/binding-wasm32-wasi@1.2.1": {
+    "license": "MIT",
+    "copyright": "2024-present VoidZero Inc. & Contributors",
+    "evidence": "https://github.com/rolldown/rolldown/blob/v1.2.1/LICENSE"
+  },
+  "@rolldown/binding-android-arm64@1.2.1": {
+    "license": "MIT",
+    "copyright": "2024-present VoidZero Inc. & Contributors",
+    "evidence": "https://github.com/rolldown/rolldown/blob/v1.2.1/LICENSE"
+  },
+  "@rolldown/binding-darwin-arm64@1.2.1": {
+    "license": "MIT",
+    "copyright": "2024-present VoidZero Inc. & Contributors",
+    "evidence": "https://github.com/rolldown/rolldown/blob/v1.2.1/LICENSE"
+  },
+  "@rolldown/binding-darwin-x64@1.2.1": {
+    "license": "MIT",
+    "copyright": "2024-present VoidZero Inc. & Contributors",
+    "evidence": "https://github.com/rolldown/rolldown/blob/v1.2.1/LICENSE"
+  },
+  "@rolldown/binding-freebsd-x64@1.2.1": {
+    "license": "MIT",
+    "copyright": "2024-present VoidZero Inc. & Contributors",
+    "evidence": "https://github.com/rolldown/rolldown/blob/v1.2.1/LICENSE"
+  },
+  "@rolldown/binding-linux-arm-gnueabihf@1.2.1": {
+    "license": "MIT",
+    "copyright": "2024-present VoidZero Inc. & Contributors",
+    "evidence": "https://github.com/rolldown/rolldown/blob/v1.2.1/LICENSE"
+  },
+  "@rolldown/binding-linux-arm64-gnu@1.2.1": {
+    "license": "MIT",
+    "copyright": "2024-present VoidZero Inc. & Contributors",
+    "evidence": "https://github.com/rolldown/rolldown/blob/v1.2.1/LICENSE"
+  },
+  "@rolldown/binding-linux-arm64-musl@1.2.1": {
+    "license": "MIT",
+    "copyright": "2024-present VoidZero Inc. & Contributors",
+    "evidence": "https://github.com/rolldown/rolldown/blob/v1.2.1/LICENSE"
+  },
+  "@rolldown/binding-linux-ppc64-gnu@1.2.1": {
+    "license": "MIT",
+    "copyright": "2024-present VoidZero Inc. & Contributors",
+    "evidence": "https://github.com/rolldown/rolldown/blob/v1.2.1/LICENSE"
+  },
+  "@rolldown/binding-linux-s390x-gnu@1.2.1": {
+    "license": "MIT",
+    "copyright": "2024-present VoidZero Inc. & Contributors",
+    "evidence": "https://github.com/rolldown/rolldown/blob/v1.2.1/LICENSE"
+  },
+  "@rolldown/binding-openharmony-arm64@1.2.1": {
+    "license": "MIT",
+    "copyright": "2024-present VoidZero Inc. & Contributors",
+    "evidence": "https://github.com/rolldown/rolldown/blob/v1.2.1/LICENSE"
+  },
+  "@rolldown/binding-win32-arm64-msvc@1.2.1": {
+    "license": "MIT",
+    "copyright": "2024-present VoidZero Inc. & Contributors",
+    "evidence": "https://github.com/rolldown/rolldown/blob/v1.2.1/LICENSE"
+  },
+  "@rolldown/binding-win32-x64-msvc@1.2.1": {
+    "license": "MIT",
+    "copyright": "2024-present VoidZero Inc. & Contributors",
+    "evidence": "https://github.com/rolldown/rolldown/blob/v1.2.1/LICENSE"
+  },
+  "@simple-git/args-pathspec@1.0.3": {
+    "license": "MIT",
+    "copyright": "2025 Steve King",
+    "evidence": "https://github.com/steveukx/git-js/tree/01bb7ceae698831e9abd9310f7d61484970ab53c"
+  },
+  "@simple-git/argv-parser@1.1.1": {
+    "license": "MIT",
+    "copyright": "2025 Steve King",
+    "evidence": "https://github.com/steveukx/git-js/tree/0e485f7706f61e7b1f8dba7b0d82448d23bc4b53c"
+  },
+  "@xterm/addon-serialize@0.14.0": {
+    "license": "MIT",
+    "copyright": "2017-2019, The xterm.js authors (https://github.com/xtermjs/xterm.js)\nCopyright (c) 2014-2016, SourceLair Private Company (https://www.sourcelair.com)\nCopyright (c) 2012-2013, Christopher Jeffrey (https://github.com/chjj/)",
+    "evidence": "https://github.com/xtermjs/xterm.js/blob/f447274f430fd22513f6adbf9862d19524471c04/LICENSE"
+  },
+  "agent-base@6.0.2": {
+    "license": "MIT",
+    "copyright": "2013 Nathan Rajlich",
+    "evidence": "https://www.npmjs.com/package/agent-base/v/6.0.2"
+  },
+  "eastasianwidth@0.2.0": {
+    "license": "MIT",
+    "copyright": "Masaki Komagata",
+    "evidence": "https://www.npmjs.com/package/eastasianwidth/v/0.2.0"
+  },
+  "err-code@2.0.3": {
+    "license": "MIT",
+    "copyright": "IndigoUnited",
+    "evidence": "https://www.npmjs.com/package/err-code/v/2.0.3"
+  },
+  "https-proxy-agent@5.0.1": {
+    "license": "MIT",
+    "copyright": "2013 Nathan Rajlich",
+    "evidence": "https://www.npmjs.com/package/https-proxy-agent/v/5.0.1"
+  },
+  "imurmurhash@0.1.4": {
+    "license": "MIT",
+    "copyright": "2013 Gary Court, Jens Taylor",
+    "evidence": "https://www.npmjs.com/package/imurmurhash/v/0.1.4"
+  },
+  "launder@1.7.1": {
+    "license": "MIT",
+    "copyright": "2013-2015 P'unk Avenue LLC",
+    "evidence": "https://github.com/apostrophecms/apostrophe/blob/v1.7.1/LICENSE"
+  },
+  "react-arborist@3.13.2": {
+    "license": "MIT",
+    "copyright": "2022 Brim Data",
+    "evidence": "https://github.com/jameskerr/react-arborist/blob/e6dc5c6d2cd1efd94ce3bc7cee722f6b428134e4/LICENSE"
+  },
+  "react-remove-scroll-bar@2.3.8": {
+    "license": "MIT",
+    "copyright": "Anton Korzunov",
+    "evidence": "https://www.npmjs.com/package/react-remove-scroll-bar/v/2.3.8"
+  },
+  "rehype-katex@7.0.1": {
+    "license": "MIT",
+    "copyright": "Junyoung Choi",
+    "evidence": "https://www.npmjs.com/package/rehype-katex/v/7.0.1"
+  },
+  "remark-math@6.0.0": {
+    "license": "MIT",
+    "copyright": "Junyoung Choi",
+    "evidence": "https://www.npmjs.com/package/remark-math/v/6.0.0"
+  },
+  "simple-git@3.36.0": {
+    "license": "MIT",
+    "copyright": "Steve King",
+    "evidence": "https://www.npmjs.com/package/simple-git/v/3.36.0"
+  },
+  "tr46@0.0.3": {
+    "license": "MIT",
+    "copyright": "Sebastian Mayr, Timothy Gu",
+    "evidence": "https://www.npmjs.com/package/tr46/v/0.0.3"
+  },
+  "unicode-animations@1.0.3": {
+    "license": "MIT",
+    "copyright": "Gunnar Gray",
+    "evidence": "https://github.com/gunnargray-dev/unicode-animations/tree/8d2c988f7986c88e7ce8d8086b2444202a868617"
+  },
+  "use-composed-ref@1.4.0": {
+    "license": "MIT",
+    "copyright": "Andarist",
+    "evidence": "https://github.com/Andarist/use-composed-ref/tree/ea2c9d969f2f90a349f4c99338b806423824cea2"
   }
 }

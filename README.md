@@ -64,11 +64,11 @@ HERMES_SRC=/tmp/hermes-agent/apps/desktop bash scripts/build-all.sh
 
 | 文件 | 说明 |
 |---|---|
-| `Hermes-Android-1.0.0-debug.apk` | Debug 签名的预览构建，可用于自行测试。 |
+| `Hermes-Android-1.0.0.apk` | 正式变体，使用项目固定签名证书；签名指纹与构建信息见 `BUILD_INFO.txt`。 |
 
-下载后可用 Release 页面的 `SHA256SUMS` 校验完整性，构建与版本信息见 `BUILD_INFO.txt`。目前没有经签名和真机验收的正式 Release APK。
+下载后可用 Release 页面的 `SHA256SUMS` 校验完整性，构建与版本信息见 `BUILD_INFO.txt`。该版本已在 Android 14 模拟器启动验证，Gateway 端到端功能和更多设备仍需验证。
 
-> 注意：Debug APK 使用 debug 签名，无法覆盖升级由其他签名（含正式签名）的已安装版本；如设备上已有其他签名版本，请先卸载再安装。
+> 注意：此 Release 使用项目签名证书，无法覆盖由其他证书签名的已安装版本；首次安装时请先卸载不同签名的旧版本。
 
 ## 测试与 CI
 

@@ -33,9 +33,19 @@ license metadata; the text file includes detected license texts with their
 package names. License metadata absent from that lockfile is tracked in
 `THIRD_PARTY_LICENSE_OVERRIDES.json` with its source.
 
-Generating these files is an inventory step, not a legal approval. Before
-distributing an APK, review every unknown license and every package without an
-included license text, verify the package's actual license and notice
-requirements, and include the required notices with the distribution. Review
-the inventory generated from the exact pinned upstream commit used to build
-the APK; a license report from another checkout is not a substitute.
+Some npm tarballs omit a standalone license file even though their package
+metadata declares an SPDX license. For those exact package versions, the
+generator uses the matching standard license text from `third_party/licenses/`
+and a package-specific copyright notice recorded with its source in
+`THIRD_PARTY_LICENSE_OVERRIDES.json`. The build fails if any package remains
+without a known license or license text.
+
+Release APKs embed the applicable notice documents under
+`assets/notices/`, including this project notice, the privacy notice, the
+dependency inventory and detected license texts, and the Apache-2.0 license.
+The release build workflow verifies that these files are present in the APK.
+
+Generating these files is an inventory step, not legal advice or a legal
+approval. Review the generated inventory from the exact pinned upstream commit
+used for the APK and verify that the copyright notices and any additional
+license obligations match the distributed dependencies.

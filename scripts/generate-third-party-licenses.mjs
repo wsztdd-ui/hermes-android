@@ -12,6 +12,7 @@ const lockPath = join(rendererRoot, 'package-lock.json')
 const lock = JSON.parse(readFileSync(lockPath, 'utf8'))
 const overridesPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'THIRD_PARTY_LICENSE_OVERRIDES.json')
 const licenseOverrides = JSON.parse(readFileSync(overridesPath, 'utf8'))
+const licenseTemplateDirectory = join(dirname(fileURLToPath(import.meta.url)), '..', 'third_party', 'licenses')
 if (lock.lockfileVersion !== 3 || !lock.packages?.['apps/desktop']) {
   throw new Error(`Expected npm v3 lockfile with apps/desktop workspace: ${lockPath}`)
 }
@@ -34,6 +35,18 @@ function readLicenseText(packageDir) {
     return { name: licenseName, text: readFileSync(filePath, 'utf8').trim() }
   } catch {
     return null
+  }
+}
+
+function readFallbackLicenseText(override) {
+  if (!override?.copyright || !override?.evidence || !['MIT', 'ISC'].includes(override.license)) return null
+  const templatePath = join(licenseTemplateDirectory, `${override.license}.txt`)
+  if (!existsSync(templatePath)) return null
+  return {
+    name: `${override.license}.txt`,
+    text: readFileSync(templatePath, 'utf8').trim().replaceAll('{{copyright}}', override.copyright),
+    source: 'SPDX standard license text with package-specific copyright notice',
+    evidence: override.evidence
   }
 }
 
@@ -76,11 +89,16 @@ while (queue.length) {
     const name = metadata.name ?? key.slice(key.lastIndexOf('node_modules/') + 'node_modules/'.length)
     const version = metadata.version ?? 'unknown'
     const override = licenseOverrides[`${name}@${version}`]
-    const licenseText = readLicenseText(join(rendererRoot, key))
+    const licenseText = readLicenseText(join(rendererRoot, key)) ?? readFallbackLicenseText(override)
     if (licenseText?.text) {
       const packageName = `${name}@${version}`
       const textEntry = licenseTexts.get(licenseText.text) ?? { text: licenseText.text, packages: [] }
-      textEntry.packages.push({ name: packageName, file: licenseText.name })
+      textEntry.packages.push({
+        name: packageName,
+        file: licenseText.name,
+        source: licenseText.source ?? 'license file in the pinned npm package',
+        evidence: licenseText.evidence ?? metadata.resolved ?? null
+      })
       licenseTexts.set(licenseText.text, textEntry)
     } else {
       missingLicenseTexts.add(`${name}@${version}`)
@@ -90,6 +108,8 @@ while (queue.length) {
       version,
       license: metadata.license ?? override?.license ?? 'UNKNOWN',
       licenseEvidence: override?.evidence ?? null,
+      licenseTextSource: licenseText?.source ?? (licenseText ? 'license file in the pinned npm package' : null),
+      copyrightNotice: override?.copyright ?? null,
       resolved: metadata.resolved ?? null,
       integrity: metadata.integrity ?? null,
       lockfilePath: key
@@ -132,3 +152,6 @@ const licenseTextDocument = [...licenseTexts.values()]
   .join('\n\n---\n\n')
 writeFileSync(textOutputPath, `${licenseTextDocument}\n`)
 console.log(`License inventory: ${report.packageCount} packages; ${report.unknownLicenseCount} unknown licenses; ${report.packagesMissingLicenseText.length} missing license text; ${outputPath}`)
+if (report.unknownLicenseCount > 0 || report.packagesMissingLicenseText.length > 0) {
+  process.exitCode = 1
+}
