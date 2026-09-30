@@ -51,6 +51,9 @@ class MobileBridge(
     private val fetchExecutor = Executors.newFixedThreadPool(4)
     private val sessionCookieLock = Any()
 
+    // nativeFetch 手动跟随重定向的最大跳数，超出后按最后一个 3xx 原样返回。
+    private val maxRedirectHops = 5
+
     @JavascriptInterface
     fun getRecentLogs(capability: String): String {
         requireCapability(capability)
@@ -126,6 +129,8 @@ class MobileBridge(
             conn.requestMethod = "POST"
             conn.connectTimeout = 15000
             conn.readTimeout = 15000
+            // 登录 POST 不跟随重定向：自动跟随会把凭据原样重放到 Location 指向的
+            // 任意主机。若网关把登录端点 30x 到别的地址，调用方拿到该 3xx 状态。
             conn.instanceFollowRedirects = false
             conn.doOutput = true
             conn.setRequestProperty("Content-Type", "application/json")
@@ -319,6 +324,8 @@ class MobileBridge(
 
     /**
      * 原生 HTTP 请求（无 CORS），自动附带 CookieManager 里的 session cookie。
+     * 3xx 重定向手动逐跳跟随（最多 maxRedirectHops 跳），凭据按 origin 裁剪，
+     * 见 performNativeFetch。
      *
      * 入参：url: String, optionsJson 含 method / headers / body / cookieScope。
      * 返回：JSON '{"status":200,"body":"...","error":null}'
@@ -353,77 +360,47 @@ class MobileBridge(
             val method = options.optString("method", "GET")
             val headersObj = options.optJSONObject("headers") ?: JSONObject()
             val body = options.optString("body", "")
-            val requestOrigin = httpsOrigin(url)
             val cookieScopeOrigin = httpsOrigin(options.optString("cookieScope", ""))
-            val cookieScopeMatchesRequest = requestOrigin != null && requestOrigin == cookieScopeOrigin
 
-            val conn = URL(url).openConnection() as HttpURLConnection
-            conn.requestMethod = method
-            conn.connectTimeout = 15000
-            // 读超时放宽到 30s：/api/model/set 等端点会做提供商目录/端点探测，
-            // 15s 会把服务端仍在处理的请求掐断成超时。
-            conn.readTimeout = 30000
-            // Do not forward manually attached session cookies across redirects.
-            conn.instanceFollowRedirects = false
-
-            // 请求头
-            val keys = headersObj.keys()
-            while (keys.hasNext()) {
-                val key = keys.next()
-                conn.setRequestProperty(key, headersObj.getString(key))
-            }
-            if (!headersObj.has("Accept")) {
-                conn.setRequestProperty("Accept", "application/json")
-            }
-            if (!headersObj.has("User-Agent")) {
-                conn.setRequestProperty("User-Agent", "HermesAndroid/1.0")
-            }
-
-            // 附带 session cookie：从 SecureTokenStore 读登录时存的 at cookie。
-            // 注意：at 值内含逗号（JWT），服务器用双引号包裹，这里也要带双引号还原。
-            val sessionCookies = requestOrigin?.takeIf { it == cookieScopeOrigin }?.let { origin ->
-                synchronized(sessionCookieLock) {
-                    secureStore.get(sessionCookieKey("session_cookie_at", origin)) to
-                        secureStore.get(sessionCookieKey("session_cookie_provider", origin))
+            // 重定向手动逐跳跟随：instanceFollowRedirects 会把已附带的会话 cookie 和
+            // 认证头原样重放到 Location 指向的任意主机。规则：
+            //   - 只有落在 cookieScope origin 上的跳转才携带会话/CookieManager cookie，
+            //     跨 origin 跳转剥离 Cookie、Authorization、X-Hermes-Session-Token；
+            //   - https → http 协议降级视为不可跟随，按该 3xx 原样返回给调用方；
+            //   - 301/302 的 POST 与 303 的非 GET 按 HTTP 语义改为 GET（丢 body），
+            //     307/308 保持方法与 body。
+            var currentUrl = url
+            var currentMethod = method
+            var currentBody = body
+            var status = 0
+            var text = ""
+            var hops = 0
+            while (true) {
+                val conn = openScopedRequest(currentUrl, currentMethod, currentBody, headersObj, cookieScopeOrigin)
+                status = conn.responseCode
+                recordSetCookies(conn, currentUrl)
+                if (status in 300..399 && hops < maxRedirectHops) {
+                    val location = conn.getHeaderField("Location")
+                    conn.disconnect()
+                    val target = resolveRedirectTarget(currentUrl, location) ?: break
+                    if ((status == 301 || status == 302) && currentMethod == "POST") {
+                        currentMethod = "GET"
+                        currentBody = ""
+                    } else if (status == 303 && currentMethod != "GET" && currentMethod != "HEAD") {
+                        currentMethod = "GET"
+                        currentBody = ""
+                    }
+                    currentUrl = target
+                    hops++
+                    continue
                 }
+                val stream = if (status >= 400) conn.errorStream else conn.inputStream
+                text = stream?.let {
+                    BufferedReader(InputStreamReader(it, Charsets.UTF_8)).use { r -> r.readText() }
+                } ?: ""
+                conn.disconnect()
+                break
             }
-            val atCookie = sessionCookies?.first
-            val providerCookie = sessionCookies?.second
-            val parts = mutableListOf<String>()
-            if (!atCookie.isNullOrBlank()) parts.add("__Host-hermes_session_at=\"$atCookie\"")
-            if (!providerCookie.isNullOrBlank()) parts.add("__Host-hermes_session_provider=$providerCookie")
-            val cmCookie = if (cookieScopeMatchesRequest) {
-                cookieManager.getCookie(url) ?: cookieManager.getCookie(stripPath(url))
-            } else null
-            if (!cmCookie.isNullOrBlank()) parts.add(cmCookie)
-            val finalCookie = parts.joinToString("; ")
-            if (finalCookie.isNotBlank()) {
-                conn.setRequestProperty("Cookie", finalCookie)
-            }
-
-            // 写 body
-            if (body.isNotEmpty() && (method == "POST" || method == "PUT" || method == "PATCH" || method == "DELETE")) {
-                conn.doOutput = true
-                conn.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
-            }
-
-            val status = conn.responseCode
-            val stream = if (status >= 400) conn.errorStream else conn.inputStream
-            val text = stream?.let {
-                BufferedReader(InputStreamReader(it, Charsets.UTF_8)).use { r -> r.readText() }
-            } ?: ""
-
-            // 记录响应里的 Set-Cookie
-            val setCookies = conn.headerFields.filterKeys { it?.equals("set-cookie", true) == true }
-                .flatMap { it.value }
-            if (setCookies.isNotEmpty()) {
-                val baseUrl = stripPath(url)
-                for (cookieLine in setCookies) {
-                    cookieManager.setCookie(baseUrl, cookieLine)
-                }
-                cookieManager.flush()
-            }
-            conn.disconnect()
 
             JSONObject()
                 .put("status", status)
@@ -436,6 +413,99 @@ class MobileBridge(
                 .put("body", "")
                 .put("error", e.message ?: "network error")
                 .toString()
+        }
+    }
+
+    /**
+     * 构建单跳请求。会话 cookie / CookieManager cookie / 认证类请求头只发往
+     * cookieScope origin，跳到其它 origin 时一律剥离——手动重定向跟随的
+     * 凭据隔离依赖这里（见 performNativeFetch）。
+     */
+    private fun openScopedRequest(
+        url: String,
+        method: String,
+        body: String,
+        headersObj: JSONObject,
+        cookieScopeOrigin: String?
+    ): HttpURLConnection {
+        val conn = URL(url).openConnection() as HttpURLConnection
+        conn.requestMethod = method
+        conn.connectTimeout = 15000
+        // 读超时放宽到 30s：/api/model/set 等端点会做提供商目录/端点探测，
+        // 15s 会把服务端仍在处理的请求掐断成超时。
+        conn.readTimeout = 30000
+        conn.instanceFollowRedirects = false
+
+        val hopOrigin = httpsOrigin(url)
+        val allowCredentials = hopOrigin != null && hopOrigin == cookieScopeOrigin
+        val credentialHeaders = setOf("cookie", "authorization", "x-hermes-session-token")
+
+        // 请求头
+        val keys = headersObj.keys()
+        while (keys.hasNext()) {
+            val key = keys.next()
+            if (!allowCredentials && key.lowercase() in credentialHeaders) continue
+            conn.setRequestProperty(key, headersObj.getString(key))
+        }
+        if (!headersObj.has("Accept")) {
+            conn.setRequestProperty("Accept", "application/json")
+        }
+        if (!headersObj.has("User-Agent")) {
+            conn.setRequestProperty("User-Agent", "HermesAndroid/1.0")
+        }
+
+        if (allowCredentials) {
+            // 附带 session cookie：从 SecureTokenStore 读登录时存的 at cookie。
+            // 注意：at 值内含逗号（JWT），服务器用双引号包裹，这里也要带双引号还原。
+            val origin = hopOrigin
+            val sessionCookies = origin?.let {
+                synchronized(sessionCookieLock) {
+                    secureStore.get(sessionCookieKey("session_cookie_at", it)) to
+                        secureStore.get(sessionCookieKey("session_cookie_provider", it))
+                }
+            }
+            val atCookie = sessionCookies?.first
+            val providerCookie = sessionCookies?.second
+            val parts = mutableListOf<String>()
+            if (!atCookie.isNullOrBlank()) parts.add("__Host-hermes_session_at=\"$atCookie\"")
+            if (!providerCookie.isNullOrBlank()) parts.add("__Host-hermes_session_provider=$providerCookie")
+            val cmCookie = cookieManager.getCookie(url) ?: cookieManager.getCookie(stripPath(url))
+            if (!cmCookie.isNullOrBlank()) parts.add(cmCookie)
+            val finalCookie = parts.joinToString("; ")
+            if (finalCookie.isNotBlank()) {
+                conn.setRequestProperty("Cookie", finalCookie)
+            }
+        }
+
+        // 写 body
+        if (body.isNotEmpty() && (method == "POST" || method == "PUT" || method == "PATCH" || method == "DELETE")) {
+            conn.doOutput = true
+            conn.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+        }
+        return conn
+    }
+
+    /** 解析 Location 为绝对地址；非 https（协议降级）或解析失败返回 null，调用方把该 3xx 原样返回。 */
+    private fun resolveRedirectTarget(base: String, location: String?): String? {
+        if (location.isNullOrBlank()) return null
+        return try {
+            val resolved = URL(URL(base), location).toString()
+            if (httpsOrigin(resolved) == null) null else resolved
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** 把该响应的 Set-Cookie 记入 CookieManager（每个重定向跳转都可能带新 cookie）。 */
+    private fun recordSetCookies(conn: HttpURLConnection, requestUrl: String) {
+        val setCookies = conn.headerFields.filterKeys { it?.equals("set-cookie", true) == true }
+            .flatMap { it.value }
+        if (setCookies.isNotEmpty()) {
+            val baseUrl = stripPath(requestUrl)
+            for (cookieLine in setCookies) {
+                cookieManager.setCookie(baseUrl, cookieLine)
+            }
+            cookieManager.flush()
         }
     }
 

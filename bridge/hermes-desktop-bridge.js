@@ -621,7 +621,7 @@ async function mintWsTicket(baseUrl) {
   bridgeLog('mintWsTicket 结果:', JSON.stringify({ status: r.status, error: r.error, body: (r.text || '').slice(0, 80) }))
   if (r.status === 401) {
     // session 过期/失效：自动重登（用户刚取消过则先冷静 15 秒，不反复弹层）
-  if (Date.now() - (lastLoginCancelAtByUrl.get(baseUrl) || 0) < 15000) {
+    if (Date.now() - (lastLoginCancelAtByUrl.get(baseUrl) || 0) < 15000) {
       throw new Error('mint ws-ticket failed: HTTP 401 (登录已取消，稍后自动重试)')
     }
     bridgeLog('mintWsTicket: 401 session expired → 自动弹登录层')
@@ -1212,7 +1212,15 @@ async function runOauthLoginConnectionConfig(remoteUrl) {
 
 async function oauthLogoutConnectionConfig(remoteUrl) {
   const mobile = window.__hermesMobile
-  if (remoteUrl && typeof mobile?.clearSessionFor === 'function') mobile.clearSessionFor(remoteUrl)
+  // 未显式指定连接时（如上游设置页登出当前连接），只清当前远程连接的会话。
+  // 不退回全量 clearSession：多 Gateway 下会把其它连接的登录态一并抹掉。
+  let target = remoteUrl || ''
+  if (!target) {
+    const conn = activeConnection()
+    const url = normalizeBaseUrl(conn?.url || '')
+    if (conn?.kind !== 'local' && url) target = url
+  }
+  if (target && typeof mobile?.clearSessionFor === 'function') mobile.clearSessionFor(target)
   else if (typeof mobile?.clearSession === 'function') mobile.clearSession()
   else {
     mobileSecureCall('del', 'session_cookie_at', null)
