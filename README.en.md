@@ -11,7 +11,7 @@ This project was built entirely with AI: AI wrote the code and documentation, wh
 
 ## Status
 
-- Source version: `1.0.0` (Android `versionCode 55`).
+- Source version: `1.0.1` (Android `versionCode 56`).
 - The project is in preview. Compatibility with different Gateway versions, vendor WebViews, and foldable devices still needs validation in users' environments.
 - The renderer theme-switching fix is maintained as a reviewable patch and applied by CI to the pinned Hermes upstream commit.
 - Voice input, system notifications, and a broad device matrix need further validation. See [testing notes](TESTING.md) and [release instructions](docs/RELEASING.md).
@@ -64,7 +64,7 @@ Download from [Releases](https://github.com/wsztdd-ui/hermes-android/releases/la
 
 | File | Notes |
 |---|---|
-| `Hermes-Android-1.0.0.apk` | Release variant signed with the project's stable certificate; see `BUILD_INFO.txt` for the fingerprint. |
+| `Hermes-Android-v1.0.1-signed.apk` | Release variant signed with the project's stable certificate; see `BUILD_INFO.txt` for the fingerprint. |
 
 Verify integrity with the `SHA256SUMS` file on the Release page; build and version details are in `BUILD_INFO.txt`. The APK was launch-tested on an Android 14 emulator; end-to-end Gateway behavior and a broader device matrix still need validation.
 
