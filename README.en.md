@@ -11,7 +11,7 @@ This project was built entirely with AI: AI wrote the code and documentation, wh
 
 ## Status
 
-- Source version: `1.0.1` (Android `versionCode 56`).
+- Source version: `1.0.2` (Android `versionCode 57`).
 - The project is in preview. Compatibility with different Gateway versions, vendor WebViews, and foldable devices still needs validation in users' environments.
 - The renderer theme-switching fix is maintained as a reviewable patch and applied by CI to the pinned Hermes upstream commit.
 - Voice input, system notifications, and a broad device matrix need further validation. See [testing notes](TESTING.md) and [release instructions](docs/RELEASING.md).

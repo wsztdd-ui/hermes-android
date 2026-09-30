@@ -35,6 +35,9 @@ object HermesNotifier {
     var enabled = true
 
     @Volatile
+    var previewEnabled = false
+
+    @Volatile
     var backgrounded = false
 
     @Volatile
@@ -112,7 +115,7 @@ object HermesNotifier {
         if (text.isEmpty() || payload.optString("status", "complete") == "error") return
         val sid = params.optString("session_id", "")
         val meta = sessionMeta[sid]
-        val title = meta?.first?.takeIf { it.isNotBlank() } ?: "Hermes"
+        val title = if (previewEnabled) meta?.first?.takeIf { it.isNotBlank() } ?: "Hermes" else "Hermes"
         val preview = text
             .replace(Regex("```[\\s\\S]*?```"), " [代码] ")
             .replace(Regex("[#*`>\\[\\]]"), "")
@@ -122,7 +125,7 @@ object HermesNotifier {
             channel = CHANNEL_MESSAGES,
             id = sid.hashCode(),
             title = title,
-            text = clamp(preview, 160),
+            text = if (previewEnabled) clamp(preview, 160) else "有新消息，打开 Hermes 查看",
             storedSid = meta?.second ?: ""
         )
     }
@@ -141,13 +144,14 @@ object HermesNotifier {
             .ifEmpty { fallback }
         val requestId = params.optString("request_id", "")
         val sid = params.optString("session_id", "")
-        val title = sessionMeta[sid]?.first?.takeIf { it.isNotBlank() }
+        val sessionTitle = sessionMeta[sid]?.first?.takeIf { it.isNotBlank() }
         val key = requestId.ifEmpty { detail }
         post(
             channel = CHANNEL_REQUESTS,
             id = (key.ifEmpty { method }).hashCode() + 31,
-            title = "${what}${title?.let { " · $it" } ?: ""}",
-            text = clamp(detail, 120).ifEmpty { "请在应用内处理" },
+            title = if (previewEnabled) "${what}${sessionTitle?.let { " · $it" } ?: ""}" else "Hermes",
+            text = if (previewEnabled) clamp(detail, 120).ifEmpty { "请在应用内处理" }
+                else "有请求需要处理，打开 Hermes 查看",
             storedSid = sessionMeta[sid]?.second ?: ""
         )
     }
@@ -171,6 +175,14 @@ object HermesNotifier {
             .setContentTitle(title)
             .setContentText(text)
             .setStyle(Notification.BigTextStyle().bigText(text))
+            .setVisibility(Notification.VISIBILITY_PRIVATE)
+            .setPublicVersion(
+                Notification.Builder(context, channel)
+                    .setSmallIcon(R.drawable.hermes_logo)
+                    .setContentTitle("Hermes")
+                    .setContentText("有通知，打开 Hermes 查看")
+                    .build()
+            )
             .setContentIntent(pending)
             .setAutoCancel(true)
             .build()

@@ -2,7 +2,7 @@
 
 ## Reproducible checks
 
-The [Android CI workflow](.github/workflows/android.yml) checks out the pinned Hermes Agent renderer, applies the compatibility patch, runs the theme lifecycle regression test, builds the renderer and Android APK, and validates generated assets. A local equivalent is:
+The [Android CI workflow](.github/workflows/android.yml) checks out the pinned Hermes Agent renderer, applies the compatibility patch, runs the theme lifecycle regression test and Android unit tests (including same-origin redirect policy), builds the renderer and Android APK, and validates generated assets. A local equivalent is:
 
 ```bash
 git clone https://github.com/NousResearch/hermes-agent.git /tmp/hermes-agent
@@ -18,7 +18,7 @@ With an Android 8.0+ emulator attached, `./scripts/debug-smoke.sh` installs and 
 
 ## Release checks
 
-Before distribution, verify the exact APK's signing certificate and checksum,
+Before distribution, verify the exact APK's signing certificate fingerprint and checksum,
 install it on an Android 8.0+ device or emulator, and test connection,
 authentication, chat, attachments, microphone permission, and notifications
 against an authorized Gateway. Record any unverified features in the release

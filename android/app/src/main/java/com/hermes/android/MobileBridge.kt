@@ -11,6 +11,7 @@ import android.os.Build
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
+import android.webkit.WebStorage
 import org.json.JSONObject
 import org.json.JSONArray
 import java.io.BufferedReader
@@ -242,13 +243,28 @@ class MobileBridge(
             origins.remove(origin)
             if (origins.isEmpty()) secureStore.del("session_cookie_origins")
             else secureStore.set("session_cookie_origins", JSONArray(origins.toList()).toString())
-            // Remove unscoped cookies left by app versions before origin scoping.
-            secureStore.del("session_cookie_at")
-            secureStore.del("session_cookie_provider")
-            secureStore.del("session_cookie_origin")
+            // Remove legacy unscoped cookies only when their recorded origin is
+            // this Gateway, or when no origin-scoped sessions exist to preserve.
+            val legacyOrigin = httpsOrigin(secureStore.get("session_cookie_origin").orEmpty())
+            if (legacyOrigin == origin || (legacyOrigin == null && origins.isEmpty())) {
+                secureStore.del("session_cookie_at")
+                secureStore.del("session_cookie_provider")
+                secureStore.del("session_cookie_origin")
+            }
         }
-        cookieManager.removeAllCookies(null)
+        // These __Host- cookies are host-only and use Path=/; expire them on this
+        // Gateway origin without logging the user out of every other Gateway.
+        val cookieUrl = "$origin/"
+        cookieManager.setCookie(
+            cookieUrl,
+            "__Host-hermes_session_at=; Max-Age=0; Path=/; Secure; HttpOnly"
+        )
+        cookieManager.setCookie(
+            cookieUrl,
+            "__Host-hermes_session_provider=; Max-Age=0; Path=/; Secure; HttpOnly"
+        )
         cookieManager.flush()
+        webView.post { WebStorage.getInstance().deleteOrigin(origin) }
     }
 
     /** JS 同步后台通知开关（更多页）。 */
@@ -256,6 +272,12 @@ class MobileBridge(
     fun setNotifyEnabled(capability: String, enabled: Boolean) {
         requireCapability(capability)
         HermesNotifier.enabled = enabled
+    }
+
+    @JavascriptInterface
+    fun setNotifyPreviewEnabled(capability: String, enabled: Boolean) {
+        requireCapability(capability)
+        HermesNotifier.previewEnabled = enabled
     }
 
     /** JS 同步 runtime session id → {title, stored} 元数据，供通知标题与点按跳转。 */
@@ -360,20 +382,18 @@ class MobileBridge(
             val method = options.optString("method", "GET")
             val headersObj = options.optJSONObject("headers") ?: JSONObject()
             val body = options.optString("body", "")
+            val requestOrigin = httpsOrigin(url)
+                ?: throw IllegalArgumentException("Request URL must use HTTPS")
             val cookieScopeOrigin = httpsOrigin(options.optString("cookieScope", ""))
 
-            // 重定向手动逐跳跟随：instanceFollowRedirects 会把已附带的会话 cookie 和
-            // 认证头原样重放到 Location 指向的任意主机。规则：
-            //   - 只有落在 cookieScope origin 上的跳转才携带会话/CookieManager cookie，
-            //     跨 origin 跳转剥离 Cookie、Authorization、X-Hermes-Session-Token；
-            //   - https → http 协议降级视为不可跟随，按该 3xx 原样返回给调用方；
-            //   - 301/302 的 POST 与 303 的非 GET 按 HTTP 语义改为 GET（丢 body），
-            //     307/308 保持方法与 body。
+            // Gateway API 重定向必须留在原始 HTTPS origin；避免 307/308 把聊天
+            // 正文转发到其他主机。301/302 POST 与 303 非 GET 仍按 HTTP 语义改为 GET。
             var currentUrl = url
             var currentMethod = method
             var currentBody = body
             var status = 0
             var text = ""
+            var redirectError: String? = null
             var hops = 0
             while (true) {
                 val conn = openScopedRequest(currentUrl, currentMethod, currentBody, headersObj, cookieScopeOrigin)
@@ -382,14 +402,18 @@ class MobileBridge(
                 if (status in 300..399 && hops < maxRedirectHops) {
                     val location = conn.getHeaderField("Location")
                     conn.disconnect()
-                    val target = resolveRedirectTarget(currentUrl, location) ?: break
-                    if ((status == 301 || status == 302) && currentMethod == "POST") {
-                        currentMethod = "GET"
-                        currentBody = ""
-                    } else if (status == 303 && currentMethod != "GET" && currentMethod != "HEAD") {
-                        currentMethod = "GET"
-                        currentBody = ""
+                    val target = NativeRedirectPolicy.resolveTarget(
+                        currentUrl, location, requestOrigin
+                    )
+                    if (target == null) {
+                        redirectError = "Redirect blocked: target must remain on the original HTTPS origin"
+                        break
                     }
+                    val rewritten = NativeRedirectPolicy.redirectMethod(
+                        status, currentMethod, currentBody
+                    )
+                    currentMethod = rewritten.first
+                    currentBody = rewritten.second
                     currentUrl = target
                     hops++
                     continue
@@ -405,7 +429,7 @@ class MobileBridge(
             JSONObject()
                 .put("status", status)
                 .put("body", text)
-                .put("error", JSONObject.NULL)
+                .put("error", redirectError?.let { it } ?: JSONObject.NULL)
                 .toString()
         } catch (e: Exception) {
             JSONObject()
@@ -483,17 +507,6 @@ class MobileBridge(
             conn.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
         }
         return conn
-    }
-
-    /** 解析 Location 为绝对地址；非 https（协议降级）或解析失败返回 null，调用方把该 3xx 原样返回。 */
-    private fun resolveRedirectTarget(base: String, location: String?): String? {
-        if (location.isNullOrBlank()) return null
-        return try {
-            val resolved = URL(URL(base), location).toString()
-            if (httpsOrigin(resolved) == null) null else resolved
-        } catch (_: Exception) {
-            null
-        }
     }
 
     /** 把该响应的 Set-Cookie 记入 CookieManager（每个重定向跳转都可能带新 cookie）。 */

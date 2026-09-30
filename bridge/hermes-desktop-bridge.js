@@ -748,6 +748,21 @@ function maskToken(token) {
 }
 
 async function connectionsRemove(id) {
+  const removed = registry.connections.find(c => c.id === id)
+  if (removed?.kind === 'remote' && removed.url) {
+    let removedOrigin = ''
+    try {
+      const parsed = new URL(removed.url)
+      if (parsed.protocol === 'https:') removedOrigin = parsed.origin
+    } catch { /* Invalid URLs have no origin-scoped session to clear. */ }
+    const originStillUsed = removedOrigin && registry.connections.some(c => {
+      if (c.id === id || c.kind !== 'remote' || !c.url) return false
+      try { return new URL(c.url).origin === removedOrigin } catch { return false }
+    })
+    if (removedOrigin && !originStillUsed && typeof window.__hermesMobile?.clearSessionFor === 'function') {
+      window.__hermesMobile.clearSessionFor(removedOrigin)
+    }
+  }
   await secureDel(`token:${id}`)
   registry.connections = registry.connections.filter(c => c.id !== id)
   if (registry.primary === id) registry.primary = 'local'

@@ -29,7 +29,7 @@
   const DRAFT_KEY = 'hermes:mv:draft'
   const PROFILE_KEY = 'hermes:mv:profile'
 
-  const MV_VERSION = '1.0.1'
+  const MV_VERSION = '1.0.2'
 
   // 统一线性图标（Feather 风格）：stroke 跟随 currentColor，深浅主题自动适配
   const svgIcon = (paths, size = 22) =>
@@ -698,6 +698,7 @@
 
   // 原生桥能力（window.__hermesMobile，Android WebView 注入；桌面/浏览器无此层）
   const NATIVE_SETTINGS_KEY = 'mv.notify.background'
+  const NATIVE_PREVIEW_KEY = 'mv.notify.preview'
   const native = () => window.__hermesMobile || null
   let notifyEnabled = (() => {
     try { return localStorage.getItem(NATIVE_SETTINGS_KEY) !== '0' } catch { return true }
@@ -709,6 +710,14 @@
     native()?.setNotifyEnabled?.(next)
     if (!next) native()?.setNotifySessions?.('{}')
     else syncNotifyContext()
+  }
+  let notifyPreviewEnabled = (() => {
+    try { return localStorage.getItem(NATIVE_PREVIEW_KEY) === '1' } catch { return false }
+  })()
+  const setNotifyPreviewEnabled = on => {
+    notifyPreviewEnabled = Boolean(on)
+    try { localStorage.setItem(NATIVE_PREVIEW_KEY, notifyPreviewEnabled ? '1' : '0') } catch { /* ignore */ }
+    native()?.setNotifyPreviewEnabled?.(notifyPreviewEnabled)
   }
   // 通知元数据同步：原生层按 runtime session id 找标题/跳转目标。
   // 全量 JSON 很小（每会话约 100 字节），全量推送免做差量。
@@ -2437,6 +2446,8 @@
     openImageOverlay, resendFailed,
     notifyEnabled: () => notifyEnabled,
     setNotifyEnabled,
+    notifyPreviewEnabled: () => notifyPreviewEnabled,
+    setNotifyPreviewEnabled,
     get ui() { return ui }
   }
 
@@ -2453,6 +2464,7 @@
     navigate('chat')
     // 应用持久化的后台通知开关到原生层
     native()?.setNotifyEnabled?.(notifyEnabled)
+    native()?.setNotifyPreviewEnabled?.(notifyPreviewEnabled)
     void (async () => {
       await refreshConnections()
       connectLoop()

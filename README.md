@@ -11,7 +11,7 @@ Hermes Android 是一个原生 Android 客户端，以 Android WebView 承载 He
 
 ## 当前状态
 
-- 当前源码版本：`1.0.1`（Android `versionCode 56`）。
+- 当前源码版本：`1.0.2`（Android `versionCode 57`）。
 - 项目处于 preview 阶段；不同 Gateway 版本、Android 厂商 WebView、折叠屏形态仍需用户环境验证。
 - 明暗主题切换的 renderer 修复以可审阅补丁维护，并由 CI 应用到固定的 Hermes 上游提交。
 - 语音输入、系统通知及完整设备矩阵仍需进一步验证；构建与测试方法见 [测试说明](TESTING.md) 和 [发布说明](docs/RELEASING.md)。

@@ -850,6 +850,19 @@
         ])
       })
     body.append(notifyRow)
+    const previewOn = MV.notifyPreviewEnabled()
+    body.append(moreRow(
+      '🔒', '通知显示消息内容',
+      previewOn ? '开启：显示回复和请求摘要' : '关闭：仅显示通用提醒',
+      () => {
+        actionSheet('通知显示消息内容', [
+          { label: previewOn ? '关闭内容预览' : '开启内容预览', onTap: () => {
+            MV.setNotifyPreviewEnabled(!previewOn)
+            renderMorePage()
+            toast(MV.notifyPreviewEnabled() ? '已开启通知内容预览' : '通知仅显示通用提醒', 'success')
+          } }
+        ])
+      }))
 
     body.append(groupHead('关于'))
     const about = el('div', 'hmv-about')

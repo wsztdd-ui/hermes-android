@@ -43,6 +43,8 @@ jobs:
       - name: Test theme lifecycle regression
         working-directory: /tmp/hermes-agent/apps/desktop
         run: npx vitest run src/themes/context.test.tsx
+      - name: Test Android redirect security policy
+        run: ./android/gradlew -p android :app:testDebugUnitTest
       - name: Build Android debug and release candidates
         env:
           HERMES_SRC: /tmp/hermes-agent/apps/desktop

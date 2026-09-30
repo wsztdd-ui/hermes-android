@@ -25,6 +25,8 @@ jobs:
       - uses: android-actions/setup-android@v4
       - name: Install Android API 34 build packages
         run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
+      - name: Test Android unit tests
+        run: ./android/gradlew -p android :app:testDebugUnitTest
       - name: Checkout pinned Hermes renderer
         run: |
           git init /tmp/hermes-agent
@@ -75,11 +77,21 @@ jobs:
           ./android/gradlew -p android :app:assembleRelease
           mkdir -p release-assets
           if [ -f android/app/build/outputs/apk/release/app-release.apk ]; then
-            cp android/app/build/outputs/apk/release/app-release.apk "release-assets/Hermes-Android-${GITHUB_REF_NAME}-signed.apk"
+            APK_PATH="release-assets/Hermes-Android-${GITHUB_REF_NAME}-signed.apk"
+            cp android/app/build/outputs/apk/release/app-release.apk "$APK_PATH"
+            APK_CERT_SHA256="$("$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --print-certs "$APK_PATH" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)"
+            if [ -z "$APK_CERT_SHA256" ]; then
+              echo "Could not read the APK signing certificate fingerprint." >&2
+              exit 1
+            fi
           else
-            cp android/app/build/outputs/apk/release/app-release-unsigned.apk "release-assets/Hermes-Android-${GITHUB_REF_NAME}-unsigned.apk"
+            APK_PATH="release-assets/Hermes-Android-${GITHUB_REF_NAME}-unsigned.apk"
+            cp android/app/build/outputs/apk/release/app-release-unsigned.apk "$APK_PATH"
+            APK_CERT_SHA256="unsigned"
           fi
           cp LICENSE release-assets/LICENSE-Hermes-Android-MIT.txt
+          cp PRIVACY.md release-assets/PRIVACY.md
+          cp SECURITY.md release-assets/SECURITY.md
           cp THIRD_PARTY_NOTICES.md release-assets/THIRD_PARTY_NOTICES.md
           cp third_party/Apache-2.0.txt release-assets/Apache-2.0.txt
           {
@@ -87,6 +99,8 @@ jobs:
             echo "app_version=$APP_VERSION"
             echo "android_source_commit=$(git rev-parse HEAD)"
             echo "hermes_renderer_commit=$HERMES_SHA"
+            echo "application_id=com.hermes.android"
+            echo "signing_certificate_sha256=$APK_CERT_SHA256"
           } > release-assets/BUILD_INFO.txt
           sha256sum release-assets/*.apk > release-assets/SHA256SUMS
       - name: Publish draft release

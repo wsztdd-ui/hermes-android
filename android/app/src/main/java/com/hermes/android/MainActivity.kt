@@ -211,7 +211,7 @@ class MainActivity : AppCompatActivity() {
               Object.defineProperty(window, '__hermesMobile', { value: bind(window.__hermesMobileRaw, [
                 'getRecentLogs', 'revealLogs', 'secureToken', 'login', 'loginAsync',
                 'clearSession', 'hasSessionFor', 'clearSessionFor', 'setNotifyEnabled',
-                'setNotifySessions', 'saveFileBase64', 'nativeFetch', 'nativeFetchAsync',
+                'setNotifySessions', 'setNotifyPreviewEnabled', 'saveFileBase64', 'nativeFetch', 'nativeFetchAsync',
                 'openExternal', 'saveImage'
               ]), configurable: false, writable: false });
               Object.defineProperty(window, '__hermesWsNative', { value: bind(window.__hermesWsNativeRaw, [

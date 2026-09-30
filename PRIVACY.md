@@ -7,11 +7,14 @@ You choose the Gateway URL and credentials in the app.
   chat and attachment data required to provide Hermes features. The Gateway
   operator controls server-side logging and retention.
 - **Credentials:** connection tokens are encrypted at rest with Android
-  Keystore-backed AES-GCM. Password/cookie authentication uses WebView cookies
-  for the configured Gateway. Removing a connection deletes its stored token
-  and connection entry, but may leave Gateway session cookies and cached chat
-  data on the device. Clearing the app's data in Android settings removes the
-  app's local data, including those cookies and caches.
+  Keystore-backed AES-GCM. Password/cookie authentication uses origin-scoped
+  session cookies for the configured Gateway. Removing the last connection for
+  an origin clears its stored Gateway session and that origin's WebView storage;
+  another connection to the same origin keeps the shared session. App-level
+  cached chat data may remain until you clear the app's data in Android settings.
+- **Notifications:** previews are off by default and can be enabled in More →
+  Notifications. Lock-screen notifications use generic text even when previews
+  are enabled in the app.
 - **Attachments:** selected files are made available to the renderer and are
   sent only when the user submits them to a conversation. Review file contents
   before sending.

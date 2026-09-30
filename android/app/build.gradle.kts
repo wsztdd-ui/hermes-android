@@ -14,8 +14,8 @@ android {
         applicationId = "com.hermes.android"
         minSdk = 26
         targetSdk = 34
-        versionCode = 56
-        versionName = "1.0.1"
+        versionCode = 57
+        versionName = "1.0.2"
     }
 
     val releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
@@ -67,4 +67,5 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.webkit:webkit:1.11.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    testImplementation("junit:junit:4.13.2")
 }

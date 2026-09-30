@@ -1,15 +1,16 @@
-# Hermes Android 1.0.1
+# Hermes Android 1.0.2
 
 Preview of an unofficial Android client for a user-provided Hermes Gateway.
-Android `versionCode` is 56 and the app ID is `com.hermes.android`.
+Android `versionCode` is 57 and the app ID is `com.hermes.android`.
 
-## Changes in 1.0.1
+## Changes in 1.0.2
 
-- Native requests follow redirects manually (up to 5 hops): session cookies and
-  auth headers are sent only to the request's declared cookie scope origin and
-  stripped on any cross-origin hop; https-to-http downgrades are not followed.
-  Login POST requests still do not follow redirects.
-- Logout clears only the connection it targets, not every stored Gateway session.
+- Gateway API redirects stay on the original HTTPS origin. Cross-origin redirects
+  are blocked before a request body can be sent to another host.
+- Removing the last connection for a Gateway origin clears its stored login
+  session and that origin's WebView storage. Other Gateway origins stay signed in.
+- Notification previews are off by default; users can opt in from More → Notifications.
+- Android CI runs regression tests for redirect origin and method handling.
 
 ## Included
 
