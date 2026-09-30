@@ -64,11 +64,11 @@ HERMES_SRC=/tmp/hermes-agent/apps/desktop bash scripts/build-all.sh
 
 | 文件 | 说明 |
 |---|---|
-| `Hermes-Android-v1.0.1-signed.apk` | 正式变体，使用项目固定签名证书；签名指纹与构建信息见 `BUILD_INFO.txt`。 |
+| `Hermes-Android-v1.0.2-signed.apk` | 正式变体；签名指纹与构建信息见 `BUILD_INFO.txt`。 |
 
 下载后可用 Release 页面的 `SHA256SUMS` 校验完整性，构建与版本信息见 `BUILD_INFO.txt`。该版本已在 Android 14 模拟器启动验证，Gateway 端到端功能和更多设备仍需验证。
 
-> 注意：此 Release 使用项目签名证书，无法覆盖由其他证书签名的已安装版本；首次安装时请先卸载不同签名的旧版本。
+> 注意：1.0.2 使用新的项目签名证书，不能覆盖安装 1.0.1。安装前请卸载旧版；这会清除本机应用数据，安装后需要重新登录 Gateway。
 
 ## 测试与 CI
 

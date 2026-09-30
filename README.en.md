@@ -64,11 +64,11 @@ Download from [Releases](https://github.com/wsztdd-ui/hermes-android/releases/la
 
 | File | Notes |
 |---|---|
-| `Hermes-Android-v1.0.1-signed.apk` | Release variant signed with the project's stable certificate; see `BUILD_INFO.txt` for the fingerprint. |
+| `Hermes-Android-v1.0.2-signed.apk` | Release variant; see `BUILD_INFO.txt` for the signing certificate fingerprint. |
 
 Verify integrity with the `SHA256SUMS` file on the Release page; build and version details are in `BUILD_INFO.txt`. The APK was launch-tested on an Android 14 emulator; end-to-end Gateway behavior and a broader device matrix still need validation.
 
-> Note: This Release is signed with the project's certificate and cannot update a version signed with a different certificate. Uninstall a differently-signed existing version before first install.
+> Note: Version 1.0.2 uses a new project signing certificate and cannot update 1.0.1. Uninstall the old version first; this clears local app data, and you will need to sign in to your Gateway again.
 
 ## Tests and CI
 

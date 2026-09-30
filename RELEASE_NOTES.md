@@ -12,6 +12,13 @@ Android `versionCode` is 57 and the app ID is `com.hermes.android`.
 - Notification previews are off by default; users can opt in from More → Notifications.
 - Android CI runs regression tests for redirect origin and method handling.
 
+## Upgrade note
+
+Version 1.0.2 uses a new signing key because the previous private key was not
+available. It cannot update a 1.0.1 installation. Uninstall 1.0.1 before
+installing this APK; this removes local app data, and you will need to sign in
+to your Gateway again.
+
 ## Included
 
 - Touch-oriented chat, session management, tasks and approvals, skills and MCP controls, file browsing, search, and model selection.
