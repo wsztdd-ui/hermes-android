@@ -29,7 +29,7 @@
   const DRAFT_KEY = 'hermes:mv:draft'
   const PROFILE_KEY = 'hermes:mv:profile'
 
-  const MV_VERSION = '1.0.2'
+  const MV_VERSION = '1.0.3'
 
   // 统一线性图标（Feather 风格）：stroke 跟随 currentColor，深浅主题自动适配
   const svgIcon = (paths, size = 22) =>
@@ -2246,7 +2246,7 @@
 
     // 其余页面 section（内容由 pages 文件填充）
     const sections = { chat: chatPage }
-    for (const id of ['sessions', 'files', 'tasks', 'skills', 'more', 'artifacts', 'commands', 'messaging', 'agents', 'content-search']) {
+    for (const id of ['sessions', 'files', 'tasks', 'skills', 'more', 'artifacts', 'commands', 'messaging', 'agents', 'content-search', 'groups']) {
       sections[id] = makePage(id)
     }
 
@@ -2344,8 +2344,18 @@
         return true
       }
       if (!ui.sheet.hidden) { closeSheet(); return true }
-      if (document.querySelector('.hmv-dialog-overlay')) {
-        document.querySelector('.hmv-dialog-overlay').remove()
+      const dialogOverlay = document.querySelector('.hmv-dialog-overlay')
+      if (dialogOverlay) {
+        const activeEl = document.activeElement
+        if (dialogOverlay.querySelector('.hmv-group-create-form')) {
+          if (activeEl && dialogOverlay.contains(activeEl)) activeEl.blur()
+          return true
+        }
+        if (activeEl && dialogOverlay.contains(activeEl) && activeEl.matches?.('input, textarea')) {
+          activeEl.blur()
+          return true
+        }
+        dialogOverlay.remove()
         return true
       }
       if (document.querySelector('.hmv-img-overlay')) {

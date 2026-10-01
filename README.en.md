@@ -22,6 +22,7 @@ This project was built entirely with AI: AI wrote the code and documentation, wh
 - In-chat search with highlighted navigation and full-text search across sessions; artifact and command centers; messaging platform status; and an overview of Agents processes.
 - Background notifications for new replies and execution approvals, with taps returning to the relevant session. Notifications can be disabled under More. Android notification permission and the device manufacturer's notification setting must allow them.
 - Per-session model selection and a global default model setting with provider-then-model selection.
+- Multi-Bot group chats: create shared rooms with 2–6 Agent profiles, follow each Bot's replies, and continue the conversation (requires Gateway `groups.*` support).
 - Automatic retry for messages queued during network outages; sent images appear as thumbnails and open full-screen when tapped.
 - Multiple Gateway connections and switching; credentials are encrypted with Android Keystore.
 - The desktop renderer remains inside the app for Gateway bridging, authentication, and recovery. The desktop-mode entry point has been removed. StarMap is not in navigation until its mobile page is implemented.
@@ -56,7 +57,7 @@ If the Android project already has generated `assets/www`, you can package it wi
 
 ### Install and connect
 
-After installing the debug APK, add your own reachable Gateway URL under **Settings → Connections** and sign in using that Gateway's authentication method. Do not put passwords, session cookies, access tokens, or private Gateway addresses in source code, issue reports, or screenshots.
+After installing the APK, go to **More → Gateway Connection Management → Add new connection** and enter your own reachable HTTPS Gateway URL. Sign in using that Gateway's authentication method. See the [getting started guide](docs/QUICKSTART.md) for step-by-step instructions. Do not put passwords, session cookies, access tokens, or private Gateway addresses in source code, issue reports, or screenshots.
 
 ### Download APK
 

@@ -611,6 +611,417 @@
     }
   }
 
+  // ── 多 Bot 群聊 ─────────────────────────────────────────────────────
+
+  const groupsState = {
+    rooms: [], profiles: [], supported: null, current: null, events: [], latestSeq: 0,
+    driverStatus: null, pollTimer: null, pollBusy: false, sendBusy: false, loadError: '', draft: ''
+  }
+
+  const groupId = () => {
+    try { return `android-${crypto.randomUUID()}` } catch {
+      return `android-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`
+    }
+  }
+
+  const groupMethodAvailable = name => Array.isArray(groupsState.supported?.methods)
+    && groupsState.supported.methods.includes(name)
+  const groupRpc = (method, params = {}, timeoutMs) => rpc(method, withProfile(params), timeoutMs)
+
+  const normalizeProfiles = result => {
+    const rows = Array.isArray(result) ? result : Array.isArray(result?.profiles) ? result.profiles : []
+    const unique = new Map()
+    for (const row of rows) {
+      const name = String(typeof row === 'string' ? row : row?.name || row?.profile || '').trim()
+      if (!name || unique.has(name)) continue
+      unique.set(name, {
+        name,
+        title: String(typeof row === 'object' ? row?.title || row?.display_name || '' : '').trim(),
+        isDefault: Boolean(typeof row === 'object' && row?.is_default)
+      })
+    }
+    return [...unique.values()]
+  }
+
+  const loadGroupDirectory = async () => {
+    const capability = await groupRpc('groups.capabilities')
+    groupsState.supported = capability || {}
+    if (!['groups.list', 'groups.create', 'groups.state', 'groups.log', 'groups.send'].every(groupMethodAvailable)) {
+      throw new Error('当前 Gateway 未提供多 Bot 群聊接口，请升级 Hermes Gateway。')
+    }
+    const [roomRows, profileResult] = await Promise.all([
+      (async () => {
+        const rows = []
+        let offset = 0
+        while (offset !== null && offset < 500) {
+          const result = await groupRpc('groups.list', { limit: 100, offset })
+          const page = Array.isArray(result?.rooms) ? result.rooms : []
+          rows.push(...page)
+          const next = result?.next_offset
+          offset = Number.isInteger(next) && next > offset ? next : null
+        }
+        return rows
+      })(),
+      rest('GET', '/api/profiles', undefined, { bust: true })
+    ])
+    groupsState.rooms = roomRows
+      .filter(room => !room.disbanded_at)
+      .sort((a, b) => Number(b.updated_at || 0) - Number(a.updated_at || 0))
+    groupsState.profiles = normalizeProfiles(profileResult)
+    groupsState.loadError = ''
+  }
+
+  const stopGroupPolling = () => {
+    clearTimeout(groupsState.pollTimer)
+    groupsState.pollTimer = null
+  }
+
+  const groupMessage = event => {
+    const actor = event?.actor || {}
+    const payload = event?.payload || {}
+    const isUser = event?.kind === 'message.user'
+    const isBot = event?.kind === 'message.member'
+    if (!isUser && !isBot) return null
+    const message = el('article', `hmv-msg hmv-group-message${isUser ? ' hmv-group-user' : ''}`)
+    message.dataset.role = isUser ? 'user' : 'assistant'
+    const meta = el('div', 'hmv-group-meta', `${actor.display_name || actor.profile || actor.id || (isUser ? '你' : 'Bot')}${event?.created_at ? ` · ${relTime(event.created_at)}` : ''}`)
+    const bubble = el('div', 'hmv-bubble')
+    bubble.textContent = String(payload.text || '')
+    message.append(meta, bubble)
+    return message
+  }
+
+  const renderGroupList = body => {
+    body.replaceChildren()
+    const intro = el('div', 'hmv-group-intro', '选择 2–6 个 Gateway 上的 Agent 配置，让它们围绕同一条消息协作。每个 Bot 在自己的配置和会话中运行。')
+    body.append(intro)
+    const create = el('button', 'hmv-page-more-btn', '＋ 新建多 Bot 群聊')
+    create.type = 'button'
+    create.addEventListener('click', () => openCreateGroup())
+    body.append(create)
+    if (groupsState.loadError) {
+      const error = el('div', 'hmv-drawer-empty', groupsState.loadError)
+      body.append(error)
+      return
+    }
+    if (!groupsState.rooms.length) {
+      body.append(el('div', 'hmv-drawer-empty', '还没有群聊。先创建一个包含至少两个 Bot 的协作房间。'))
+      return
+    }
+    const list = el('div', 'hmv-page-list')
+    for (const room of groupsState.rooms) {
+      const row = el('button', 'hmv-srow hmv-group-room')
+      row.type = 'button'
+      const top = el('div', 'hmv-row-top')
+      top.append(el('span', 'hmv-row-title', room.name || '多 Bot 群聊'))
+      top.append(el('span', 'hmv-row-time', relTime(room.updated_at || room.created_at)))
+      const memberNames = (room.members || []).map(member => member.display_name || member.profile || member.handle || member.member_id).filter(Boolean)
+      row.append(top, el('div', 'hmv-row-preview', `${memberNames.length} 个 Bot${memberNames.length ? ` · ${memberNames.join('、')}` : ''}`))
+      row.addEventListener('click', () => void openGroupRoom(room))
+      list.append(row)
+    }
+    body.append(list)
+  }
+
+  const openCreateGroup = () => {
+    if (groupsState.profiles.length < 2) {
+      toast('当前 Gateway 至少需要两个 Agent 配置才能创建群聊', 'warn')
+      return
+    }
+    const overlay = el('div', 'hmv-dialog-overlay')
+    const form = el('form', 'hmv-dialog hmv-group-create-form')
+    form.append(el('h3', null, '新建多 Bot 群聊'))
+    const nameLabel = el('label', 'hmv-dialog-label', '群聊名称')
+    const nameInput = el('input', 'hmv-dialog-input')
+    nameInput.value = '新建协作群'
+    nameInput.maxLength = 100
+    nameLabel.append(nameInput)
+    form.append(nameLabel, el('div', 'hmv-dialog-label', '选择成员（2–6 个）'))
+    const choices = el('div', 'hmv-group-profile-list')
+    const checkboxes = []
+    for (const profile of groupsState.profiles) {
+      const label = el('label', 'hmv-group-profile-option')
+      const checkbox = document.createElement('input')
+      checkbox.type = 'checkbox'
+      checkbox.value = profile.name
+      checkbox.checked = profile.name === (store.profileName || groupsState.profiles[0]?.name)
+      const copy = document.createElement('span')
+      copy.textContent = `${profile.title || profile.name}${profile.isDefault ? ' · 默认' : ''}`
+      label.append(checkbox, copy)
+      choices.append(label)
+      checkboxes.push(checkbox)
+    }
+    form.append(choices)
+    const error = el('div', 'hmv-dialog-error')
+    const buttons = el('div', 'hmv-dialog-row')
+    const cancel = el('button', 'hmv-dialog-btn', '取消')
+    cancel.type = 'button'
+    const submit = el('button', 'hmv-dialog-btn hmv-dialog-ok', '创建群聊')
+    submit.type = 'submit'
+    buttons.append(cancel, submit)
+    form.append(error, buttons)
+    overlay.append(form)
+    document.body.append(overlay)
+    const close = () => overlay.remove()
+    cancel.addEventListener('click', close)
+    overlay.addEventListener('click', event => { if (event.target === overlay) close() })
+    form.addEventListener('submit', async event => {
+      event.preventDefault()
+      const selected = checkboxes.filter(box => box.checked).map(box => groupsState.profiles.find(profile => profile.name === box.value)).filter(Boolean)
+      if (!nameInput.value.trim()) { error.textContent = '请输入群聊名称'; return }
+      if (selected.length < 2 || selected.length > 6) { error.textContent = '请选择 2–6 个 Bot'; return }
+      submit.disabled = true
+      try {
+        const members = selected.map(profile => ({
+          member_id: profile.name,
+          profile: profile.name,
+          handle: profile.name.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'bot',
+          display_name: profile.title || profile.name
+        }))
+        const result = await groupRpc('groups.create', { room_id: groupId(), name: nameInput.value.trim(), members })
+        close()
+        await loadGroupDirectory()
+        await openGroupRoom(result?.room || groupsState.rooms.find(room => room.name === nameInput.value.trim()))
+        toast('多 Bot 群聊已创建', 'success')
+      } catch (failure) {
+        error.textContent = clampText(failure?.message || failure, 160)
+        submit.disabled = false
+      }
+    })
+  }
+
+  const answerGroupApproval = async (action, choice) => {
+    try {
+      await groupRpc('groups.approve', {
+        room_id: groupsState.current?.room_id,
+        member_id: action.member_id,
+        task_id: action.task_id,
+        execution_generation: action.execution_generation,
+        request_id: action.request_id,
+        choice
+      })
+      toast(choice === 'once' ? '已允许这一次' : '已拒绝', 'success')
+      await pollGroupLog()
+    } catch (error) {
+      toast(`授权处理失败：${clampText(error?.message, 90)}`, 'error')
+    }
+  }
+
+  const renderGroupRoom = () => {
+    const body = MV.ui.sections.groups.querySelector('.hmv-page-body')
+    if (!body || !groupsState.current) return
+    const oldInput = body.querySelector('.hmv-group-input')
+    const wasFocused = oldInput && document.activeElement === oldInput
+    const selectionStart = wasFocused ? oldInput.selectionStart : null
+    const selectionEnd = wasFocused ? oldInput.selectionEnd : null
+    if (oldInput) groupsState.draft = oldInput.value
+    const oldTranscript = body.querySelector('.hmv-group-transcript')
+    const previousScroll = oldTranscript?.scrollTop || 0
+    const followBottom = !oldTranscript || oldTranscript.scrollHeight - oldTranscript.scrollTop - oldTranscript.clientHeight < 48
+    body.replaceChildren()
+    const room = groupsState.current
+    const toolbar = el('div', 'hmv-group-toolbar')
+    const back = el('button', 'hmv-page-more-btn', '‹ 所有群聊')
+    back.type = 'button'
+    back.addEventListener('click', () => { groupsState.current = null; stopGroupPolling(); renderGroupList(body) })
+    const menu = el('button', 'hmv-page-more-btn', '群聊设置')
+    menu.type = 'button'
+    menu.addEventListener('click', () => actionSheet(room.name || '群聊设置', [
+      { label: '停止当前协作', onTap: async () => {
+        try { await groupRpc('groups.stop', { room_id: room.room_id, cancel_id: groupId() }); toast('已请求停止', 'success') }
+        catch (error) { toast(`停止失败：${clampText(error?.message, 80)}`, 'error') }
+      } },
+      { label: '重命名', onTap: () => promptDialog('重命名群聊', [{ name: 'name', label: '新名称', value: room.name || '' }], async (values, close, fail) => {
+        const name = String(values.name || '').trim()
+        if (!name) return fail('名称不能为空')
+        try {
+          await groupRpc('groups.rename', { room_id: room.room_id, event_id: groupId(), name })
+          room.name = name
+          close()
+          renderGroupRoom()
+          void loadGroupDirectory()
+        } catch (error) { fail(clampText(error?.message, 100)) }
+      }) },
+      { label: '解散群聊', danger: true, confirm: '再次点按确认解散', onTap: async () => {
+        try {
+          await groupRpc('groups.disband', { room_id: room.room_id, cancel_id: groupId() })
+          groupsState.current = null
+          stopGroupPolling()
+          await loadGroupDirectory()
+          renderGroupList(MV.ui.sections.groups.querySelector('.hmv-page-body'))
+          toast('群聊已解散', 'success')
+        } catch (error) { toast(`解散失败：${clampText(error?.message, 80)}`, 'error') }
+      } }
+    ]))
+    toolbar.append(back, menu)
+    body.append(toolbar)
+    const title = el('h2', 'hmv-group-title', room.name || '多 Bot 群聊')
+    body.append(title)
+    body.append(el('div', 'hmv-group-members', (room.members || []).map(member => member.display_name || member.profile || member.handle || member.member_id).join(' · ')))
+    const pending = Array.isArray(groupsState.driverStatus?.pending_actions) ? groupsState.driverStatus.pending_actions : []
+    for (const action of pending) {
+      if (action.kind === 'approval' && action.member_id && action.task_id && action.request_id) {
+        const card = el('div', 'hmv-group-attention')
+        card.append(el('strong', null, `${action.member_id} 需要操作授权`))
+        const approval = action.approval || {}
+        card.append(el('div', null, approval.tool_name ? `请求执行：${approval.tool_name}` : approval.message || 'Bot 正在等待工具执行授权。'))
+        const buttons = el('div', 'hmv-group-attention-actions')
+        for (const [choice, label] of [['once', '允许这一次'], ['deny', '拒绝']]) {
+          const button = el('button', 'hmv-dialog-btn', label)
+          button.type = 'button'
+          button.addEventListener('click', () => void answerGroupApproval(action, choice))
+          buttons.append(button)
+        }
+        card.append(buttons)
+        body.append(card)
+      } else if (action.kind === 'retry' && action.task_id) {
+        const card = el('div', 'hmv-group-attention')
+        card.append(el('strong', null, '有一项协作结果需要确认'))
+        card.append(el('div', null, 'Gateway 未能确认 Bot 是否完成任务。重试可能再次运行该任务。'))
+        const retry = el('button', 'hmv-dialog-btn hmv-dialog-ok', '确认后重试')
+        retry.type = 'button'
+        retry.addEventListener('click', () => actionSheet('重试这项 Bot 任务？', [
+          { label: '确认重试', danger: true, confirm: '再次点按确认', onTap: async () => {
+            try {
+              await groupRpc('groups.retry', { room_id: room.room_id, task_id: action.task_id })
+              toast('已请求重试', 'success')
+              await pollGroupLog()
+            } catch (error) { toast(`重试失败：${clampText(error?.message, 90)}`, 'error') }
+          } }
+        ]))
+        card.append(retry)
+        body.append(card)
+      }
+    }
+    const transcript = el('div', 'hmv-group-transcript')
+    for (const event of groupsState.events) {
+      const message = groupMessage(event)
+      if (message) transcript.append(message)
+      else if (event.kind === 'room.activity') {
+        const activity = el('div', 'hmv-group-activity', event.payload?.status === 'working' ? 'Bots 正在讨论…' : '本轮协作已结束')
+        transcript.append(activity)
+      } else if (event.kind === 'turn.failed' || event.kind === 'member.unavailable') {
+        const actor = event.actor?.display_name || event.actor?.profile || 'Bot'
+        transcript.append(el('div', 'hmv-group-activity', `${actor} 暂时不可用：${event.payload?.reason || event.payload?.error || 'Gateway 未能完成此轮'}`))
+      }
+    }
+    if (!groupsState.events.length) transcript.append(el('div', 'hmv-drawer-empty', '发送一条消息开始协作。被点名的 Bot 会优先回应；没有点名时由群内 Bot 自行判断是否参与。'))
+    body.append(transcript)
+    const composer = el('form', 'hmv-group-composer')
+    const input = el('textarea', 'hmv-input hmv-group-input')
+    input.rows = 2
+    input.placeholder = '给群里的 Bot 发消息… 可用 @profile 点名'
+    input.value = groupsState.draft
+    input.addEventListener('input', () => { groupsState.draft = input.value })
+    const send = el('button', 'hmv-send', '发送')
+    send.type = 'submit'
+    send.disabled = groupsState.sendBusy
+    input.disabled = groupsState.sendBusy
+    composer.append(input, send)
+    composer.addEventListener('submit', async event => {
+      event.preventDefault()
+      const text = input.value.trim()
+      if (!text || groupsState.sendBusy) return
+      groupsState.sendBusy = true
+      send.disabled = true
+      input.disabled = true
+      try {
+        await groupRpc('groups.send', { room_id: room.room_id, event_id: groupId(), payload: { text, thread_id: 'main' } })
+        if (groupsState.current?.room_id === room.room_id) {
+          input.value = ''
+          const visibleInput = body.querySelector('.hmv-group-input')
+          if (visibleInput) visibleInput.value = ''
+          groupsState.draft = ''
+        }
+        await pollGroupLog()
+      } catch (error) { toast(`发送失败：${clampText(error?.message, 100)}`, 'error') }
+      finally {
+        groupsState.sendBusy = false
+        send.disabled = false
+        input.disabled = false
+        const visibleInput = body.querySelector('.hmv-group-input')
+        if (visibleInput) visibleInput.disabled = false
+      }
+    })
+    body.append(composer)
+    transcript.scrollTop = followBottom ? transcript.scrollHeight : previousScroll
+    if (wasFocused) {
+      input.focus()
+      if (selectionStart !== null) input.setSelectionRange(selectionStart, selectionEnd)
+    }
+  }
+
+  const pollGroupLog = async () => {
+    const room = groupsState.current
+    if (!room || groupsState.pollBusy || !groupMethodAvailable('groups.log')) return
+    groupsState.pollBusy = true
+    try {
+      const [result, state] = await Promise.all([
+        groupRpc('groups.log', { room_id: room.room_id, since_seq: groupsState.latestSeq, limit: 500 }),
+        groupRpc('groups.state', { room_id: room.room_id })
+      ])
+      if (groupsState.current !== room) return
+      const nextStatus = state?.driver_status || null
+      const statusChanged = JSON.stringify(nextStatus?.pending_actions || []) !== JSON.stringify(groupsState.driverStatus?.pending_actions || [])
+      groupsState.driverStatus = nextStatus
+      const fresh = Array.isArray(result?.events) ? result.events : []
+      if (fresh.length) {
+        groupsState.events.push(...fresh)
+        groupsState.latestSeq = Math.max(groupsState.latestSeq, ...fresh.map(event => Number(event.seq) || 0))
+        if (groupsState.events.length > 500) groupsState.events.splice(0, groupsState.events.length - 500)
+        const renamed = [...fresh].reverse().find(event => event.kind === 'room.renamed')
+        if (renamed?.payload?.name) room.name = renamed.payload.name
+      }
+      if (fresh.length || statusChanged) renderGroupRoom()
+    } catch (error) {
+      console.warn('[mv-pages] group log failed:', error?.message)
+    } finally {
+      groupsState.pollBusy = false
+      if (groupsState.current === room && store.activeTab === 'groups') {
+        groupsState.pollTimer = setTimeout(() => void pollGroupLog(), 2200)
+      }
+    }
+  }
+
+  const openGroupRoom = async room => {
+    if (!room?.room_id) return
+    stopGroupPolling()
+    groupsState.current = room
+    groupsState.events = []
+    groupsState.draft = ''
+    groupsState.latestSeq = Math.max(0, Number(room.latest_seq || 0) - 500)
+    renderGroupRoom()
+    try {
+      const state = await groupRpc('groups.state', { room_id: room.room_id })
+      groupsState.current = state?.room || room
+      groupsState.driverStatus = state?.driver_status || null
+      groupsState.latestSeq = Math.max(0, Number(groupsState.current.latest_seq || room.latest_seq || 0) - 500)
+      renderGroupRoom()
+    } catch (error) {
+      toast(`读取群聊失败：${clampText(error?.message, 90)}`, 'error')
+      return
+    }
+    await pollGroupLog()
+  }
+
+  const openGroupsPage = async () => {
+    const body = MV.ui.sections.groups.querySelector('.hmv-page-body')
+    if (!body) return
+    if (groupsState.current) {
+      renderGroupRoom()
+      await pollGroupLog()
+      return
+    }
+    renderGroupList(body)
+    try {
+      await loadGroupDirectory()
+      renderGroupList(body)
+    } catch (error) {
+      groupsState.loadError = clampText(error?.message || error, 180)
+      renderGroupList(body)
+    }
+  }
+
   // ── 更多页 ──────────────────────────────────────────────────────────
 
   const moreState = { profiles: [], activeProfile: '', config: null, modelOptions: null, connections: null }
@@ -763,6 +1174,7 @@
           onTap: async () => {
             try {
               await desktopConnectionsSetPrimary(c.id)
+              await window.hermesDesktop.connections.setLastUsed(c.id)
               toast('已切换主连接', 'success')
               window.location.reload()
             } catch (error) { toast(`切换失败：${clampText(error?.message, 60)}`, 'error') }
@@ -823,6 +1235,9 @@
     body.append(groupHead('模型'))
     const ctxLabel = spec.context ? ` · 上下文 ${(spec.context / 1000).toFixed(0)}K` : ''
     body.append(moreRow('🧠', '默认模型设置（提供商 → 模型）', `${spec.provider || '?'} · ${spec.model || '?'}${ctxLabel}`, openModelSettings))
+
+    body.append(groupHead('协作'))
+    body.append(moreRow('👥', '多 Bot 群聊', '让多个 Agent 在共享房间里协作', () => MV.pushPage('groups')))
 
     body.append(groupHead('浏览与工具'))
     body.append(moreRow('📁', '文件浏览', '工作区目录/预览/编辑', () => MV.pushPage('files')))
@@ -1673,6 +2088,11 @@
   MV.registerPage('sessions', {
     title: '会话',
     onShow: () => { makeBody(MV.ui.sections.sessions); fetchSessionsRest() }
+  })
+  MV.registerPage('groups', {
+    title: '多 Bot 群聊',
+    onShow: () => { makeBody(MV.ui.sections.groups); void openGroupsPage() },
+    onHide: stopGroupPolling
   })
   MV.registerPage('content-search', {
     title: '内容搜索',

@@ -618,6 +618,43 @@ html[data-hermes-mobile-keyboard] [data-hermes-mobile-view] .hmv-drawer-foot { d
 .hmv-srow[data-active] { border-color: var(--hm-accent-strong); }
 .hmv-srow[data-pinned] { background: var(--hm-surface-raised); }
 
+/* 多 Bot 群聊 */
+.hmv-group-intro,
+.hmv-group-members,
+.hmv-group-activity {
+  color: var(--hm-text-dim);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.hmv-group-intro { padding: 8px 2px 12px; }
+.hmv-group-room { appearance: none; }
+.hmv-group-toolbar { display: flex; gap: 8px; }
+.hmv-group-toolbar .hmv-page-more-btn { flex: 1; }
+.hmv-group-title { margin: 12px 2px 2px; font-size: 19px; }
+.hmv-group-members { padding: 0 2px 12px; }
+.hmv-group-attention { display: grid; gap: 8px; margin: 0 0 10px; padding: 11px; border: 1px solid var(--hm-accent-strong); border-radius: 12px; background: var(--hm-surface-raised); color: var(--hm-text); font-size: 13px; }
+.hmv-group-attention-actions { display: flex; gap: 8px; }
+.hmv-group-attention-actions > button { flex: 1; }
+.hmv-group-transcript {
+  min-height: 180px;
+  max-height: 48vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px 2px;
+  border-top: 1px solid var(--hm-border-soft);
+  border-bottom: 1px solid var(--hm-border-soft);
+}
+.hmv-group-meta { margin: 0 4px 4px; color: var(--hm-text-dim); font-size: 11px; }
+.hmv-group-message { margin-bottom: 10px; }
+.hmv-group-activity { padding: 6px 8px; text-align: center; }
+.hmv-group-composer { display: flex; align-items: end; gap: 8px; padding: 10px 0; }
+.hmv-group-input { flex: 1; min-height: 48px; max-height: 120px; }
+.hmv-group-composer .hmv-send { width: auto; min-width: 58px; padding: 0 13px; border-radius: 12px; font-size: 14px; }
+.hmv-group-create-form { max-height: calc(var(--hermes-mobile-viewport-height, 100dvh) - 24px); overflow-y: auto; }
+.hmv-group-profile-list { display: grid; gap: 4px; max-height: 36vh; overflow-y: auto; margin: 4px 0 10px; }
+.hmv-group-profile-option { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 8px 10px; border-radius: 10px; background: var(--hm-surface); color: var(--hm-text); font-size: 14px; }
+.hmv-group-profile-option input { width: 18px; height: 18px; accent-color: var(--hm-accent-strong); }
+
 /* 分段选择（技能页）*/
 .hmv-seg {
   display: flex;

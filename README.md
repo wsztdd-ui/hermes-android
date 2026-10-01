@@ -22,6 +22,7 @@ Hermes Android 是一个原生 Android 客户端，以 Android WebView 承载 He
 - 聊天内搜索（本会话高亮跳转）与跨会话全文搜索；产物中心、命令中心、消息平台状态、Agents 进程一览。
 - 后台消息通知：切出应用后可收到新回复与执行确认提醒，点按跳回对应会话；可在「更多」中关闭（需要 Android 通知权限及厂商通知开关允许）。
 - 会话级模型切换（输入区上方胶囊）与全局默认模型设置（提供商 → 模型两步选择）。
+- 多 Bot 群聊：创建共享协作房间、选择 2–6 个 Agent 配置、查看各 Bot 回复并继续对话（需要 Gateway 提供 `groups.*` 接口）。
 - 发送失败自动补发（断网挂起、恢复后自动重发）；发出的图片在气泡内缩略图回显，点按全屏查看。
 - 多 Gateway 连接管理与切换；认证凭据通过 Android Keystore 加密存储。
 - 桌面 renderer 保留在应用内部，负责 Gateway 桥接与认证/恢复；应用内已移除桌面模式入口。StarMap 暂不出现在导航中，待移动页面实现后再加入。
@@ -56,7 +57,7 @@ HERMES_SRC=/tmp/hermes-agent/apps/desktop bash scripts/build-all.sh
 
 ### 安装和连接
 
-安装 Debug APK 后，在 **Settings → Connections** 添加你自行准备且可访问的 Gateway URL，并按该 Gateway 的认证方式登录。不要将密码、session cookie、访问令牌或私有 Gateway 地址写入源代码、问题报告或截图。
+安装 APK 后，在 **更多 → 网关连接管理 → 添加新连接** 添加你自行准备且可访问的 HTTPS Gateway 地址，并按该 Gateway 的认证方式登录。分步说明见[上手指南](docs/QUICKSTART.md)。不要将密码、session cookie、访问令牌或私有 Gateway 地址写入源代码、问题报告或截图。
 
 ### 下载 APK
 

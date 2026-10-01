@@ -513,8 +513,7 @@ async function apiRequest(request) {
 
 // ── 连接解析（getConnection / getConnectionFor / getGatewayWsUrl）────────────
 
-async function resolveConnection(profile) {
-  const conn = activeConnection()
+async function resolveConnection(profile, conn = activeConnection()) {
 
   // 移动端没有「本地 backend」：当激活连接是 local（占位）或没有任何
   // 带有效 url 的连接时，抛错让 renderer 走到 boot-failure 引导界面
@@ -567,17 +566,7 @@ async function getConnectionFor(payload) {
   if (connectionId && connectionId !== 'local') {
     const conn = registry.connections.find(c => c.id === connectionId)
     if (!conn) return resolveConnection(null)
-    const saved = registry
-    // 临时切换 activeConnection 到目标连接并解析
-    const prevPrimary = saved.primary
-    saved.primary = connectionId
-    registry = saved
-    try {
-      return await resolveConnection(payload?.profile ?? null)
-    } finally {
-      saved.primary = prevPrimary
-      registry = saved
-    }
+    return resolveConnection(payload?.profile ?? null, conn)
   }
   return resolveConnection(payload?.profile ?? null)
 }
