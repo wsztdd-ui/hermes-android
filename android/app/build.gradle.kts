@@ -14,8 +14,8 @@ android {
         applicationId = "com.hermes.android"
         minSdk = 26
         targetSdk = 34
-        versionCode = 57
-        versionName = "1.0.2"
+        versionCode = 58
+        versionName = "1.0.3"
     }
 
     val releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")

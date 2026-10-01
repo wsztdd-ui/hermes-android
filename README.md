@@ -11,7 +11,7 @@ Hermes Android 是一个原生 Android 客户端，以 Android WebView 承载 He
 
 ## 当前状态
 
-- 当前源码版本：`1.0.2`（Android `versionCode 57`）。
+- 当前源码版本：`1.0.3`（Android `versionCode 58`）。
 - 项目处于 preview 阶段；不同 Gateway 版本、Android 厂商 WebView、折叠屏形态仍需用户环境验证。
 - 明暗主题切换的 renderer 修复以可审阅补丁维护，并由 CI 应用到固定的 Hermes 上游提交。
 - 语音输入、系统通知及完整设备矩阵仍需进一步验证；构建与测试方法见 [测试说明](TESTING.md) 和 [发布说明](docs/RELEASING.md)。
@@ -64,11 +64,11 @@ HERMES_SRC=/tmp/hermes-agent/apps/desktop bash scripts/build-all.sh
 
 | 文件 | 说明 |
 |---|---|
-| `Hermes-Android-v1.0.2-signed.apk` | 正式变体；签名指纹与构建信息见 `BUILD_INFO.txt`。 |
+| `Hermes-Android-v1.0.3-signed.apk` | 正式变体；签名指纹与构建信息见 `BUILD_INFO.txt`。 |
 
 下载后可用 Release 页面的 `SHA256SUMS` 校验完整性，构建与版本信息见 `BUILD_INFO.txt`。该版本已在 Android 14 模拟器启动验证，Gateway 端到端功能和更多设备仍需验证。
 
-> 注意：1.0.2 使用新的项目签名证书，不能覆盖安装 1.0.1。安装前请卸载旧版；这会清除本机应用数据，安装后需要重新登录 Gateway。
+> 注意：1.0.3 延续 1.0.2 的签名证书，可直接覆盖更新 1.0.2。1.0.1 使用旧证书，不能直接覆盖更新；安装前需卸载旧版，这会清除本机应用数据。
 
 ## 测试与 CI
 
