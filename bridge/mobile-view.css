@@ -424,10 +424,15 @@
   right: 12px;
   bottom: 12px;
   z-index: var(--hmv-z-sheet);
+  max-height: calc(var(--hermes-mobile-viewport-height, 100dvh) - 24px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   border-radius: 14px;
   background: var(--hm-surface-raised);
   border: 1px solid var(--hm-border-soft);
-  overflow: hidden;
 }
 .hmv-sheet button {
   display: block;

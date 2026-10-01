@@ -97,7 +97,17 @@ function checkCssSyntax(css, label) {
 }
 
 checkCssSyntax(readFileSync(fileURLToPath(new URL('../bridge/mobile-touch.css', import.meta.url)), 'utf8'), 'bridge/mobile-touch.css')
-checkCssSyntax(readFileSync(fileURLToPath(new URL('../bridge/mobile-view.css', import.meta.url)), 'utf8'), 'bridge/mobile-view.css')
+const mobileViewCss = readFileSync(fileURLToPath(new URL('../bridge/mobile-view.css', import.meta.url)), 'utf8')
+checkCssSyntax(mobileViewCss, 'bridge/mobile-view.css')
+const modelSheetCss = mobileViewCss.match(/\.hmv-sheet\s*\{([^}]*)\}/)?.[1] ?? ''
+for (const [property, expected] of [
+  ['max-height', 'calc(var(--hermes-mobile-viewport-height, 100dvh) - 24px)'],
+  ['overflow-y', 'auto'],
+  ['touch-action', 'pan-y']
+]) {
+  const declaration = modelSheetCss.match(new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([^;]+)`))?.[1]?.trim()
+  if (declaration !== expected) throw new Error(`.hmv-sheet must set ${property}: ${expected}`)
+}
 const injectedStyle = html.match(/<style id="hermes-mobile-touch">([\s\S]*?)<\/style>/)
 if (injectedStyle) checkCssSyntax(injectedStyle[1], 'injected hermes-mobile-touch style')
 const injectedViewStyle = html.match(/<style id="hermes-mobile-view-style">([\s\S]*?)<\/style>/)
