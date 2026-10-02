@@ -11,7 +11,7 @@ This project was built entirely with AI: AI wrote the code and documentation, wh
 
 ## Status
 
-- Source version: `1.0.3` (Android `versionCode 58`).
+- Source version: `1.0.4` (Android `versionCode 59`).
 - The project is in preview. Compatibility with different Gateway versions, vendor WebViews, and foldable devices still needs validation in users' environments.
 - The renderer theme-switching fix is maintained as a reviewable patch and applied by CI to the pinned Hermes upstream commit.
 - Voice input, system notifications, and a broad device matrix need further validation. See [testing notes](TESTING.md) and [release instructions](docs/RELEASING.md).
@@ -65,11 +65,11 @@ Download from [Releases](https://github.com/wsztdd-ui/hermes-android/releases/la
 
 | File | Notes |
 |---|---|
-| `Hermes-Android-v1.0.3-signed.apk` | Release variant; see `BUILD_INFO.txt` for the signing certificate fingerprint. |
+| `Hermes-Android-v1.0.4-signed.apk` | Release variant; see `BUILD_INFO.txt` for the signing certificate fingerprint. |
 
-Verify integrity with the `SHA256SUMS` file on the Release page; build and version details are in `BUILD_INFO.txt`. The APK was launch-tested on an Android 14 emulator; end-to-end Gateway behavior and a broader device matrix still need validation.
+Verify integrity with the `SHA256SUMS` file on the Release page; build and version details are in `BUILD_INFO.txt`. Multi-Bot group chat was verified on an Android 14 emulator with an authorized Gateway; more devices and Gateway versions still need validation.
 
-> Note: Version 1.0.3 keeps the signing certificate introduced in 1.0.2 and can update 1.0.2 in place. Version 1.0.1 uses the old certificate and cannot be updated directly; uninstall it first, which clears local app data.
+> Note: Version 1.0.4 keeps the signing certificate introduced in 1.0.2 and can update 1.0.2 or 1.0.3 in place. Version 1.0.1 uses the old certificate and cannot be updated directly; uninstall it first, which clears local app data.
 
 ## Tests and CI
 

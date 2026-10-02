@@ -1,37 +1,28 @@
-# Hermes Android 1.0.3
+# Hermes Android 1.0.4
 
 Preview of an unofficial Android client for a user-provided Hermes Gateway.
-Android `versionCode` is 58 and the app ID is `com.hermes.android`.
+Android `versionCode` is 59 and the app ID is `com.hermes.android`.
 
-## Changes in 1.0.3
+## Changes in 1.0.4
 
-- Long model selection lists now fit within the screen and scroll with vertical
-  touch gestures. This covers both provider/subscription choices and model lists.
-- Frontend validation checks the model picker height and touch-scroll rules.
-- The two-stage model picker was verified on an Android emulator.
+- Added multi-Bot group chat with 2–6 Agent profiles, room management, and
+  replies from multiple Bots in one conversation. Requires Gateway `groups.*`
+  support.
+- Preserved the two-stage provider/model picker and its touch scrolling fix.
 
 ## Upgrade note
 
-Version 1.0.3 keeps the signing certificate introduced in 1.0.2 and can update
-1.0.2 in place. Version 1.0.1 uses the previous certificate and cannot be
-updated directly; uninstall it before installing this APK.
-
-## Included
-
-- Touch-oriented chat, session management, tasks and approvals, skills and MCP controls, file browsing, search, and model selection.
-- Multiple Gateway connections with Android Keystore-backed token storage.
-- Background notifications and retry of messages queued during connection loss.
-- Origin-scoped Gateway sessions and per-Gateway login handling.
-- A native WebView bridge restricted to the app's trusted page.
+Version 1.0.4 uses the same signing certificate as 1.0.2 and 1.0.3, so it can
+update either version in place. Version 1.0.1 used a different certificate;
+upgrading from it requires uninstalling the old app, which clears local data.
 
 ## Verification and limits
 
-CI builds the pinned renderer, runs its theme lifecycle test, and produces
-Android Debug and unsigned Release candidates. See [TESTING.md](TESTING.md)
-for reproducible checks. Test the exact downloaded APK with your own authorized
-Gateway. Voice input, notification delivery, and compatibility across devices
-and Gateway versions may vary.
+Multi-Bot group chat was exercised on an Android 14 emulator with an authorized
+Gateway: two Bots replied in a temporary room, and the room was then disbanded.
+Other devices and Gateway versions still need validation. Voice input and
+notification delivery remain device-dependent.
 
-The release page provides the APK, SHA-256 checksum, build information, and
-third-party notices. Keep credentials, private URLs, and chat content out of
-public reports.
+The release page provides the signed APK, SHA-256 checksum, build information,
+license, privacy notice, and third-party notices. Keep credentials, private
+URLs, and chat content out of public reports.

@@ -4,7 +4,7 @@ Hermes Android 是连接到你自己的 Hermes Gateway 的客户端。项目不�
 
 ## 1. 安装
 
-从 [GitHub Releases](https://github.com/wsztdd-ui/hermes-android/releases/latest) 下载 `Hermes-Android-v1.0.3-signed.apk`，在 Android 手机上安装并打开。最低支持 Android 8.0（API 26）。
+从 [GitHub Releases](https://github.com/wsztdd-ui/hermes-android/releases/latest) 下载 `Hermes-Android-v1.0.4-signed.apk`，在 Android 手机上安装并打开。最低支持 Android 8.0（API 26）。
 
 如果 Android 提示不允许安装此来源的应用，请按系统提示临时允许你使用的浏览器或文件管理器安装 APK。安装完成后，可关闭该来源的安装权限。
 
@@ -47,4 +47,4 @@ Hermes Android 是连接到你自己的 Hermes Gateway 的客户端。项目不�
 
 ## 更新
 
-1.0.3 可直接覆盖更新 1.0.2。1.0.1 使用旧签名证书，无法直接覆盖安装；卸载旧版再安装会清除该应用保存在本机的数据。安装包、校验文件及构建信息都在 [Releases 页面](https://github.com/wsztdd-ui/hermes-android/releases/latest)。
+1.0.4 可直接覆盖更新 1.0.2 和 1.0.3。1.0.1 使用旧签名证书，无法直接覆盖安装；卸载旧版再安装会清除该应用保存在本机的数据。安装包、校验文件及构建信息都在 [Releases 页面](https://github.com/wsztdd-ui/hermes-android/releases/latest)。

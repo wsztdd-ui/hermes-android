@@ -29,7 +29,7 @@
   const DRAFT_KEY = 'hermes:mv:draft'
   const PROFILE_KEY = 'hermes:mv:profile'
 
-  const MV_VERSION = '1.0.3'
+  const MV_VERSION = '1.0.4'
 
   // 统一线性图标（Feather 风格）：stroke 跟随 currentColor，深浅主题自动适配
   const svgIcon = (paths, size = 22) =>

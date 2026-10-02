@@ -7,7 +7,7 @@ Release APKs, generates third-party notices, and uploads candidates as CI
 artifacts. It does not create tags or publish GitHub Releases.
 
 Android `versionName` and `versionCode` are set in
-`android/app/build.gradle.kts`. The current source is `1.0.3` / `58`, with app
+`android/app/build.gradle.kts`. The current source is `1.0.4` / `59`, with app
 ID `com.hermes.android`. Changing the app ID creates a separate installation;
 future updates must increase `versionCode` and use the same signing key.
 
