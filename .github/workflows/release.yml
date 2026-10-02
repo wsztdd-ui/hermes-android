@@ -102,7 +102,7 @@ jobs:
             echo "application_id=com.hermes.android"
             echo "signing_certificate_sha256=$APK_CERT_SHA256"
           } > release-assets/BUILD_INFO.txt
-          sha256sum release-assets/*.apk > release-assets/SHA256SUMS
+          (cd release-assets && sha256sum *.apk > SHA256SUMS)
       - name: Publish draft release
         uses: softprops/action-gh-release@v2
         with:
